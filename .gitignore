@@ -1,0 +1,17 @@
+.env
+.test_output
+.tests
+.data.ensemble_output.csv
+.data.ensemble_output2.csv
+.data.ensemple_results.csv
+.data.ensemble_output_new_data.csv
+.data.evaluation_results.csv
+data.Evaluation results using weighted scores.docx
+data.Evaluation results using standard scores.docx
+evaluate
+debug
+test_output
+tests
+run_inference
+
+#agentic_url_classifier.drawio
