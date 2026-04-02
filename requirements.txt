@@ -1,11 +1,8 @@
 python-dotenv
-langgraph
 pandas
 requests
 torch
-time
 datetime
-sklearn
 safetensors
 tqdm
 torchvision
@@ -15,3 +12,5 @@ tldextract
 catboost
 joblib
 scikit-learn
+numpy
+matplotlib

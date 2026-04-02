@@ -6,8 +6,8 @@ from services.tranco import TrancoService
 from services.virustotal import vt_check_url
 from utils.normalization import extract_registered_domain
 from graph.nodes.catboost_inference import catboost_inference
-from graph.nodes.ensemble import ensemble_decision
-from graph.nodes.ensemble import weighted_ensemble_decision
+from graph.nodes.ensemble2 import ensemble_decision
+from graph.nodes.ensemble2 import weighted_ensemble_decision
 
 #Phishing score: 0, Benign score: 1
 
