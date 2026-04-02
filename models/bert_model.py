@@ -1,8 +1,43 @@
+import json
+from pathlib import Path
+
 import torch
 from models.bert_architecture import  CharBERTClassifier
 from models.tokenizer import load_char_to_idx
 
+ACTIVE_BERT_DIR = Path("data/bert_model/bert_cv3_f3")
+ACTIVE_BERT_CHECKPOINT = ACTIVE_BERT_DIR / "bert_checkpoint.pt"
+ACTIVE_BERT_CONFIG = ACTIVE_BERT_DIR / "config.json"
+
 _MODEL = None
+
+
+def get_active_bert_metadata() -> dict:
+    config = {}
+    if ACTIVE_BERT_CONFIG.exists():
+        with ACTIVE_BERT_CONFIG.open("r", encoding="utf-8") as f:
+            config = json.load(f)
+
+    hidden_size = config.get("hidden_size", "unknown")
+    num_hidden_layers = config.get("num_hidden_layers", "unknown")
+    num_attention_heads = config.get("num_attention_heads", "unknown")
+
+    architecture_label = (
+        f"{ACTIVE_BERT_DIR.name}_h{hidden_size}_"
+        f"l{num_hidden_layers}_a{num_attention_heads}"
+    )
+
+    return {
+        "model_dir": str(ACTIVE_BERT_DIR),
+        "checkpoint_path": str(ACTIVE_BERT_CHECKPOINT),
+        "config_path": str(ACTIVE_BERT_CONFIG),
+        "bert_architecture": architecture_label,
+        "hidden_size": hidden_size,
+        "num_hidden_layers": num_hidden_layers,
+        "num_attention_heads": num_attention_heads,
+    }
+
+
 def load_bert_model():
     global _MODEL
     if _MODEL is not None:
@@ -25,10 +60,7 @@ def load_bert_model():
 
     #checkpoint from the best bert fold in cross validation
     #"data/bert_model/bert_crossval_best/bert_checkpoint.pt",
-    checkpoint = torch.load(
-        "data/bert_model/bert_cv3_f3/bert_checkpoint.pt",
-        map_location=device
-    ) 
+    checkpoint = torch.load(ACTIVE_BERT_CHECKPOINT, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
 
     # 4. Attach char_to_idx mapping

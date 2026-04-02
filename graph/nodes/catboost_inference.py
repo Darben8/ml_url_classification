@@ -3,8 +3,8 @@ from models.catboost_model import load_catboost_model
 from services.url_features import extract_url_features
 import joblib
 
-#feature_cols_path = "data/ml_models/feature_columns.pkl"
-feature_cols_path = "data/ml_models/catboost_crossval_best/charbert_optimized_best_fold.pkl" #feature columns from the best catboost fold in cross validation
+feature_cols_path = "data/ml_models/feature_columns.pkl"
+#feature_cols_path = "data/ml_models/catboost_crossval_best/charbert_optimized_best_fold.pkl" #feature columns from the best catboost fold in cross validation
 feature_list = joblib.load(feature_cols_path)
 
 #inference when phishing score is 0, benign score is 1
