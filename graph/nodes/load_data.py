@@ -36,8 +36,9 @@ df_labeled_urls = normalize_labels(df_labeled_urls_old, label_col="status", phis
 old_sample = df_labeled_urls.sample(frac=0.0001, random_state=42)
 
 print(f"Total OLD URLs with labels: {len(df_labeled_urls)}")
-print(f"Old Phishing: {(old_sample['status'] == 0).sum()}")
-print(f"Old Benign: {(old_sample['status'] == 1).sum()}")
+print(f"Sampled Old URLs with labels: {len(old_sample)}")
+# print(f"Old Phishing: {(old_sample['status'] == 0).sum()}")
+# print(f"Old Benign: {(old_sample['status'] == 1).sum()}")
 
 df_labeled_urls["status"] = df_labeled_urls["status"].astype(int)
 assert set(df_labeled_urls["status"].unique()).issubset({0, 1})
@@ -50,8 +51,8 @@ assert set(old_sample["status"].unique()).issubset({0, 1})
 df_new_urls = pd.read_csv("data/phishing_url_dataset_unique.csv")
 df_new_url = normalize_labels(df_new_urls, label_col="label",phishing_value=1)
 
-phish_frac  = 0.0039   # sample less phishing
-benign_frac = 0.0059  # sample more benign
+phish_frac  = 0.39   # sample less phishing
+benign_frac = 0.59  # sample more benign
 
 df_phish = df_new_url[df_new_url["label"] == 0].sample(frac=phish_frac, random_state=42)
 df_benign = df_new_url[df_new_url["label"] == 1].sample(frac=benign_frac, random_state=42)
@@ -97,13 +98,13 @@ def class_balance(df, name):
     print(f"\n{name} class balance:")
     print(df["label"].value_counts(normalize=True).round(3))
 
-class_balance(url_sample, "Full dataset")
-class_balance(df_dev, "Dev split")
-class_balance(df_val, "Validation split")
-class_balance(df_test, "Test split")
-print(f"Develop split URLs number is: {len(df_dev)}")
-print(f"Validation split URLs number is: {len(df_val)}")
-print(f"Test split URLs number is: {len(df_test)}")
+class_balance(url_sample, "Full dataset - New URLs")
+class_balance(df_dev, "Dev split - New URLs")
+class_balance(df_val, "Validation split - New URLs")
+class_balance(df_test, "Test split - New URLs")
+print(f"Develop split New URLs number is: {len(df_dev)}")
+print(f"Validation split New URLs number is: {len(df_val)}")
+print(f"Test split New URLs number is: {len(df_test)}")
 
 
 # ---- STRATIFIED SPLITS FOR OLD DATASET ----

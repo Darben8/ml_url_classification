@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from graph.nodes.ensemble2 import ensemble_decision, weighted_ensemble_decision
+from graph.nodes.ensemble2 import ensemble_decision
 from graph.nodes.inference import ml_inference
 from graph.nodes.load_data import (
     df_dev,
@@ -19,20 +19,21 @@ from graph.nodes.load_data import (
     df_val,
     df_val_old,
 )
+from graph.nodes.stacking_inference import stacking_decision
 from models.bert_model import get_active_bert_metadata
 
 
 results_output = "data/results/results.csv"
 fig_dir = "data/figures"
 timezone = "US/Eastern"
-data_type = "new_data" #can use old_data or new_data
-use_weighted = False
+data_type = "new_data"  # can use old_data or new_data
+fusion_mode = "average"  # can use average or stacking
 
 os.makedirs(fig_dir, exist_ok=True)
 
 bert_metadata = get_active_bert_metadata()
 bert_architecture = bert_metadata["bert_architecture"]
-ensemble_type = "weighted" if use_weighted else "standard"
+ensemble_type = "standard"
 
 dataset_config = {
     "new_data": {
@@ -59,6 +60,9 @@ dataset_config = {
 if data_type not in dataset_config:
     raise ValueError(f"Unsupported data_type: {data_type}")
 
+if fusion_mode not in {"average", "stacking"}:
+    raise ValueError(f"Unsupported fusion_mode: {fusion_mode}")
+
 
 active_dataset = dataset_config[data_type]
 
@@ -68,8 +72,8 @@ def map_prediction_to_label(status: str) -> int:
 
 
 def get_prediction_fields() -> tuple[str, str]:
-    if use_weighted:
-        return "weighted_prediction", "weighted_score"
+    if fusion_mode == "stacking":
+        return "stacking_prediction", "stacking_score"
     return "std_prediction", "ensemble_score"
 
 
@@ -84,8 +88,8 @@ def run_split_evaluation(df: pd.DataFrame, split_name: str):
         result = ml_inference({"url": row.url})
         result = ensemble_decision(result)
 
-        if use_weighted:
-            result = weighted_ensemble_decision(result)
+        if fusion_mode == "stacking":
+            result = stacking_decision(result)
 
         pred_label = result[prediction_field]
         score = result[score_field]
@@ -117,7 +121,7 @@ def build_figure_filename(split_name: str) -> str:
     safe_split = split_name.lower().replace(" ", "_")
     return (
         f"{fig_dir}/{safe_split}_{active_dataset['file_tag']}_"
-        f"{ensemble_type}_{bert_architecture}_{ts}.png"
+        f"{fusion_mode}_{ensemble_type}_{bert_architecture}_{ts}.png"
     )
 
 
@@ -125,13 +129,13 @@ def plot_score_distribution(scores, labels, split_name: str):
     filename = build_figure_filename(f"{split_name}_scores")
     title = (
         f"{split_name} Score Distribution "
-        f"({active_dataset['display_name']}, {ensemble_type}, {bert_architecture})"
+        f"({active_dataset['display_name']}, {fusion_mode}, {bert_architecture})"
     )
 
     plt.figure(figsize=(7, 4))
     plt.hist(scores[labels == 1], bins=30, alpha=0.6, label="Benign", density=True)
     plt.hist(scores[labels == 0], bins=30, alpha=0.6, label="Phishing", density=True)
-    plt.xlabel("Weighted Ensemble Score" if use_weighted else "Standard Ensemble Score")
+    plt.xlabel("Stacking Score" if fusion_mode == "stacking" else "Standard Ensemble Score")
     plt.ylabel("Density")
     plt.title(title)
     plt.legend()
@@ -153,7 +157,7 @@ def plot_roc_curve(y_true, scores, split_name: str):
     plt.ylabel("True Positive Rate")
     plt.title(
         f"ROC Curve - {split_name} "
-        f"({active_dataset['display_name']}, {ensemble_type}, {bert_architecture})"
+        f"({active_dataset['display_name']}, {fusion_mode}, {bert_architecture})"
     )
     plt.legend(loc="lower right")
     plt.grid(alpha=0.3)
@@ -166,9 +170,10 @@ def plot_roc_curve(y_true, scores, split_name: str):
 def save_metrics(metrics: dict):
     timestamp = datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S")
     metrics["saved_at"] = timestamp
-    metrics["ensemble_type"] = ensemble_type
+    metrics["ensemble_type"] = ensemble_type if fusion_mode == "average" else "n/a"
     metrics["data_type"] = data_type
     metrics["bert_architecture"] = bert_architecture
+    metrics["fusion_mode"] = fusion_mode
 
     column_order = [
         "Split",
@@ -184,6 +189,7 @@ def save_metrics(metrics: dict):
         "ensemble_type",
         "data_type",
         "bert_architecture",
+        "fusion_mode",
     ]
 
     df_out = pd.DataFrame([[metrics.get(col) for col in column_order]], columns=column_order)
@@ -200,6 +206,7 @@ def save_metrics(metrics: dict):
 def print_active_configuration():
     print(f"Data type: {data_type}")
     print(f"Ensemble type: {ensemble_type}")
+    print(f"Fusion mode: {fusion_mode}")
     print(f"BERT architecture: {bert_architecture}")
     print(f"Results output: {results_output}")
 
@@ -215,7 +222,7 @@ if __name__ == "__main__":
     for split_name, split_df in active_dataset["splits"].items():
         print(
             f"\n--- {split_name.upper()} SET EVALUATION "
-            f"({active_dataset['display_name']}, {ensemble_type}) ---"
+            f"({active_dataset['display_name']}, {fusion_mode}) ---"
         )
 
         split_metrics, split_scores, split_labels = run_split_evaluation(split_df, split_name)
