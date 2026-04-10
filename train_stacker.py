@@ -24,6 +24,7 @@ training_label_column = "label"
 results_output = "data/results/stacker_training_features.csv"
 meta_model_dir = "data/ml_models/meta_model"
 timezone = "US/Eastern"
+batch_size = 50
 
 
 def normalize_training_labels(df: pd.DataFrame, label_col: str, phishing_value: int) -> pd.DataFrame:
@@ -38,17 +39,90 @@ def normalize_training_labels(df: pd.DataFrame, label_col: str, phishing_value: 
     return df
 
 
-def build_feature_dataset(df: pd.DataFrame, label_column: str) -> pd.DataFrame:
-    rows = []
+def get_feature_output_columns() -> list[str]:
+    return get_signal_feature_columns() + ["url", "label"]
 
-    for _, row in tqdm(df.iterrows(), total=len(df), desc="Building feature rows"):
+
+def validate_existing_feature_csv(output_path: str):
+    if not os.path.exists(output_path):
+        return
+
+    df_existing = pd.read_csv(output_path, nrows=0)
+    expected_columns = get_feature_output_columns()
+    existing_columns = list(df_existing.columns)
+
+    if existing_columns != expected_columns:
+        print("Error: existing feature CSV schema does not match current expected schema.")
+        print(f"Existing columns: {existing_columns}")
+        print(f"Expected columns: {expected_columns}")
+        print("Please start a new file before resuming feature extraction.")
+        raise SystemExit(1)
+
+
+def load_processed_urls(output_path: str) -> set[str]:
+    if not os.path.exists(output_path):
+        return set()
+
+    df_existing = pd.read_csv(output_path, usecols=["url"])
+    return set(df_existing["url"].dropna().astype(str))
+
+
+def append_rows_to_csv(rows: list[dict], output_path: str):
+    if not rows:
+        return
+
+    df_out = pd.DataFrame(rows)
+    df_out = df_out[get_feature_output_columns()]
+    write_header = not os.path.exists(output_path)
+    df_out.to_csv(output_path, mode="a", header=write_header, index=False)
+
+    print(
+        f"appended {len(rows)} rows to csv at {output_path} "
+        f"(buffer flushed, buffer size now 0)"
+    )
+
+
+def build_feature_dataset(df: pd.DataFrame, label_column: str, output_path: str, batch_size_value: int) -> pd.DataFrame:
+    validate_existing_feature_csv(output_path)
+
+    processed_urls = load_processed_urls(output_path)
+    completed_rows = len(processed_urls)
+    remaining_df = df[~df["url"].astype(str).isin(processed_urls)].copy()
+
+    print(f"rows already completed: {completed_rows}")
+    print(f"rows remaining: {len(remaining_df)}")
+
+    rows = []
+    pbar = tqdm(remaining_df.iterrows(), total=len(remaining_df), desc="Building feature rows")
+
+    for _, row in pbar:
         state = ml_inference({"url": row.url})
+
+        vt_error_text = str(state.get("virustotal", {}).get("error", "") or "")
+        if "429" in vt_error_text and "Quota Exceeded" in vt_error_text:
+            print(f'VirusTotal quota warning for URL: {row.url} -> "{vt_error_text}"')
+
         features = build_signal_features(state)
         features["url"] = row.url
         features["label"] = int(getattr(row, label_column))
         rows.append(features)
 
-    return pd.DataFrame(rows)
+        pbar.set_postfix(buffer_size=len(rows), completed=completed_rows + len(rows))
+
+        if len(rows) >= batch_size_value:
+            append_rows_to_csv(rows, output_path)
+            completed_rows += len(rows)
+            rows = []
+            print(f"rows completed so far: {completed_rows}")
+            print(f"rows remaining: {len(df) - completed_rows}")
+
+    if rows:
+        append_rows_to_csv(rows, output_path)
+        completed_rows += len(rows)
+        print(f"rows completed so far: {completed_rows}")
+        print(f"rows remaining: {len(df) - completed_rows}")
+
+    return pd.read_csv(output_path)
 
 
 def build_training_pipeline():
@@ -106,10 +180,13 @@ def save_stacker_artifacts(model, feature_columns: list[str], metadata: dict):
 
 def main():
     print("loading training split")
-    
     print("building features")
-    df_features = build_feature_dataset(df_dev, label_column=training_label_column)
-    df_features.to_csv(results_output, index=False)
+    df_features = build_feature_dataset(
+        df_dev,
+        label_column=training_label_column,
+        output_path=results_output,
+        batch_size_value=batch_size,
+    )
 
     print("running CV")
     cv_metrics = evaluate_stacker_cv(df_features)
@@ -130,6 +207,8 @@ def main():
             "phishing": 0,
         },
         "cv_metrics": cv_metrics,
+        "batch_size": batch_size,
+        "feature_csv_path": results_output,
     }
 
     print("saving artifacts")
