@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 vt_db_path = "data/vt_cache.db"
-cache_ttl = 7 * 24 * 3600  # 7 days
+cache_ttl = 20 * 24 * 3600  # 15 days
 
 def init_vt_cache():
     conn = sqlite3.connect(vt_db_path)

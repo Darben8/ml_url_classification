@@ -1,10 +1,12 @@
 import json
 import os
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import joblib
 import pandas as pd
+import sklearn
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -22,6 +24,7 @@ from models.fusion_features import build_signal_features, get_signal_feature_col
 training_data_path = "data/phishing_url_dataset_unique.csv -> url_sample -> df_dev"
 training_label_column = "label"
 results_output = "data/results/stacker_training_features.csv"
+train_results_output = "data/results/all_model_train_results.csv"
 meta_model_dir = "data/ml_models/meta_model_v2"
 timezone = "US/Eastern"
 batch_size = 50
@@ -178,7 +181,70 @@ def save_stacker_artifacts(model, feature_columns: list[str], metadata: dict):
         json.dump(metadata, f, indent=2)
 
 
+def append_train_results(
+    cv_metrics: dict,
+    saved_at: str,
+    train_time_seconds: float,
+    num_samples: int,
+    bert_architecture: str,
+):
+    column_order = [
+        "Model",
+        "Accuracy",
+        "CV Accuracy",
+        "CV Std",
+        "Precision",
+        "Recall",
+        "F1-Score",
+        "Train Time (s)",
+        "Inference Time (s)",
+        "Saved_at",
+        "Training dataset name",
+        "ROC-AUC",
+        "Num samples in dataset",
+        "Note",
+    ]
+
+    model_name = f"Stacker model ({os.path.basename(meta_model_dir)})"
+    note = f"sklearn v{sklearn.__version__}; {bert_architecture}"
+
+    row = {
+        "Model": model_name,
+        "Accuracy": cv_metrics.get("Accuracy"),
+        "CV Accuracy": "",
+        "CV Std": "",
+        "Precision": cv_metrics.get("Precision"),
+        "Recall": cv_metrics.get("Recall"),
+        "F1-Score": cv_metrics.get("F1"),
+        "Train Time (s)": round(train_time_seconds, 3),
+        "Inference Time (s)": "",
+        "Saved_at": saved_at.replace(":", "-"),
+        "Training dataset name": training_data_path,
+        "ROC-AUC": cv_metrics.get("ROC_AUC"),
+        "Num samples in dataset": num_samples,
+        "Note": note,
+    }
+
+    df_out = pd.DataFrame([[row.get(col) for col in column_order]], columns=column_order)
+
+    try:
+        df_existing = pd.read_csv(train_results_output)
+        if list(df_existing.columns) != column_order:
+            print("Error: all_model_train_results.csv schema does not match expected columns.")
+            print(f"Existing columns: {list(df_existing.columns)}")
+            print(f"Expected columns: {column_order}")
+            print("Skipping append to all_model_train_results.csv.")
+            return
+        df_out = pd.concat([df_existing, df_out], ignore_index=True)
+    except FileNotFoundError:
+        pass
+
+    df_out.to_csv(train_results_output, index=False)
+    print(f"appended stacker training summary to {train_results_output}")
+
+
 def main():
+    train_start = time.time()
     print("loading training split")
     print("building features")
     df_features = build_feature_dataset(
@@ -195,8 +261,9 @@ def main():
     model, feature_columns = train_stacker_model(df_features)
 
     bert_metadata = get_active_bert_metadata()
+    saved_at = datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S")
     metadata = {
-        "saved_at": datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S"),
+        "saved_at": saved_at,
         "training_data_path": training_data_path,
         "label_column": training_label_column,
         "feature_columns": feature_columns,
@@ -213,6 +280,13 @@ def main():
 
     print("saving artifacts")
     save_stacker_artifacts(model, feature_columns, metadata)
+    append_train_results(
+        cv_metrics=cv_metrics,
+        saved_at=saved_at,
+        train_time_seconds=time.time() - train_start,
+        num_samples=len(df_features),
+        bert_architecture=bert_metadata["bert_architecture"],
+    )
 
     print("Stacker training complete.")
     print(cv_metrics)
