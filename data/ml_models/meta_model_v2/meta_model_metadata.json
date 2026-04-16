@@ -1,0 +1,36 @@
+{
+  "saved_at": "2026-04-16 00:50:35",
+  "training_data_path": "data/phishing_url_dataset_unique.csv -> url_sample -> df_dev",
+  "label_column": "label",
+  "feature_columns": [
+    "bert_score",
+    "cb_benign_prob",
+    "vt_detection_rate",
+    "vt_malicious_count",
+    "vt_suspicious_count",
+    "vt_total_engines",
+    "in_tranco",
+    "tranco_score",
+    "tranco_rank",
+    "bert_error",
+    "catboost_error",
+    "vt_error",
+    "tranco_error"
+  ],
+  "bert_architecture": "bert_cv3_f3_h512_l8_a8",
+  "calibration_method": "sigmoid",
+  "label_convention": {
+    "benign": 1,
+    "phishing": 0
+  },
+  "cv_metrics": {
+    "Accuracy": 0.9900239010703523,
+    "Precision": 0.9856777493606138,
+    "Recall": 0.9979285344381149,
+    "F1": 0.9917653113741637,
+    "ROC_AUC": 0.9955267882052662,
+    "Num Samples": 9623
+  },
+  "batch_size": 50,
+  "feature_csv_path": "data/results/stacker_training_features.csv"
+}

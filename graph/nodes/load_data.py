@@ -51,8 +51,8 @@ assert set(old_sample["status"].unique()).issubset({0, 1})
 df_new_urls = pd.read_csv("data/phishing_url_dataset_unique.csv")
 df_new_url = normalize_labels(df_new_urls, label_col="label",phishing_value=1)
 
-phish_frac  = 0.39   # sample less phishing
-benign_frac = 0.59  # sample more benign
+phish_frac  = 0.0039   # sample less phishing
+benign_frac = 0.0059  # sample more benign
 
 df_phish = df_new_url[df_new_url["label"] == 0].sample(frac=phish_frac, random_state=42)
 df_benign = df_new_url[df_new_url["label"] == 1].sample(frac=benign_frac, random_state=42)

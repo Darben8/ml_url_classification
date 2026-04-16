@@ -22,7 +22,7 @@ from models.fusion_features import build_signal_features, get_signal_feature_col
 training_data_path = "data/phishing_url_dataset_unique.csv -> url_sample -> df_dev"
 training_label_column = "label"
 results_output = "data/results/stacker_training_features.csv"
-meta_model_dir = "data/ml_models/meta_model"
+meta_model_dir = "data/ml_models/meta_model_v2"
 timezone = "US/Eastern"
 batch_size = 50
 

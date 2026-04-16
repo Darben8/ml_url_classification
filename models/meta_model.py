@@ -3,7 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-meta_model_dir = Path("data/ml_models/meta_model")
+meta_model_dir = Path("data/ml_models/meta_model_v2")
 meta_model_path = meta_model_dir / "logistic_regression_calibrated.pkl"
 meta_feature_columns_path = meta_model_dir / "signal_feature_columns.pkl"
 

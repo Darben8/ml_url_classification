@@ -1,0 +1,5 @@
+meta model 1
+trained with first ensemble feature dataset. 
+not all vt results.
+
+meta_model_v1 trained with sklearn v1.6.1
