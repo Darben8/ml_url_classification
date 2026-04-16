@@ -14,118 +14,34 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from tqdm import tqdm
 
-from graph.nodes.inference import ml_inference
-from graph.nodes.load_data import df_dev
-from models.bert_model import get_active_bert_metadata
-from models.fusion_features import build_signal_features, get_signal_feature_columns
-
-training_data_path = "data/phishing_url_dataset_unique.csv -> url_sample -> df_dev"
-training_label_column = "label"
-results_output = "data/results/stacker_training_features.csv"
+feature_source_path = "data/results/stacker_training_features.csv"
+results_output = "data/results/stacker_training_features_4signal.csv"
 train_results_output = "data/results/all_model_train_results.csv"
-meta_model_dir = "data/ml_models/meta_model_v2"
+meta_model_dir = "data/ml_models/meta_model_4signal_v1"
 timezone = "US/Eastern"
-batch_size = 50
 
 
-def normalize_training_labels(df: pd.DataFrame, label_col: str, phishing_value: int) -> pd.DataFrame:
-    df = df.copy()
-    df[label_col] = df[label_col].astype(int)
-
-    if phishing_value == 1:
-        df[label_col] = df[label_col].map({1: 0, 0: 1})
-    elif phishing_value != 0:
-        raise ValueError("Unsupported phishing label encoding")
-
-    return df
+def get_4signal_feature_columns() -> list[str]:
+    return ["bert_score", "cb_score", "vt_score", "tranco_score"]
 
 
-def get_feature_output_columns() -> list[str]:
-    return get_signal_feature_columns() + ["url", "label"]
+def build_4signal_feature_dataset(source_path: str, output_path: str) -> pd.DataFrame:
+    df = pd.read_csv(source_path)
 
-
-def validate_existing_feature_csv(output_path: str):
-    if not os.path.exists(output_path):
-        return
-
-    df_existing = pd.read_csv(output_path, nrows=0)
-    expected_columns = get_feature_output_columns()
-    existing_columns = list(df_existing.columns)
-
-    if existing_columns != expected_columns:
-        print("Error: existing feature CSV schema does not match current expected schema.")
-        print(f"Existing columns: {existing_columns}")
-        print(f"Expected columns: {expected_columns}")
-        print("Please start a new file before resuming feature extraction.")
-        raise SystemExit(1)
-
-
-def load_processed_urls(output_path: str) -> set[str]:
-    if not os.path.exists(output_path):
-        return set()
-
-    df_existing = pd.read_csv(output_path, usecols=["url"])
-    return set(df_existing["url"].dropna().astype(str))
-
-
-def append_rows_to_csv(rows: list[dict], output_path: str):
-    if not rows:
-        return
-
-    df_out = pd.DataFrame(rows)
-    df_out = df_out[get_feature_output_columns()]
-    write_header = not os.path.exists(output_path)
-    df_out.to_csv(output_path, mode="a", header=write_header, index=False)
-
-    print(
-        f"appended {len(rows)} rows to csv at {output_path} "
-        f"(buffer flushed, buffer size now 0)"
+    df_out = pd.DataFrame(
+        {
+            "bert_score": df["bert_score"],
+            "cb_score": df["cb_benign_prob"],
+            "vt_score": 1 - df["vt_detection_rate"],
+            "tranco_score": df["tranco_score"],
+            "url": df["url"],
+            "label": df["label"],
+        }
     )
-
-
-def build_feature_dataset(df: pd.DataFrame, label_column: str, output_path: str, batch_size_value: int) -> pd.DataFrame:
-    validate_existing_feature_csv(output_path)
-
-    processed_urls = load_processed_urls(output_path)
-    completed_rows = len(processed_urls)
-    remaining_df = df[~df["url"].astype(str).isin(processed_urls)].copy()
-
-    print(f"rows already completed: {completed_rows}")
-    print(f"rows remaining: {len(remaining_df)}")
-
-    rows = []
-    pbar = tqdm(remaining_df.iterrows(), total=len(remaining_df), desc="Building feature rows")
-
-    for _, row in pbar:
-        state = ml_inference({"url": row.url})
-
-        vt_error_text = str(state.get("virustotal", {}).get("error", "") or "")
-        if "429" in vt_error_text and "Quota Exceeded" in vt_error_text:
-            print(f'VirusTotal quota warning for URL: {row.url} -> "{vt_error_text}"')
-
-        features = build_signal_features(state)
-        features["url"] = row.url
-        features["label"] = int(getattr(row, label_column))
-        rows.append(features)
-
-        pbar.set_postfix(buffer_size=len(rows), completed=completed_rows + len(rows))
-
-        if len(rows) >= batch_size_value:
-            append_rows_to_csv(rows, output_path)
-            completed_rows += len(rows)
-            rows = []
-            print(f"rows completed so far: {completed_rows}")
-            print(f"rows remaining: {len(df) - completed_rows}")
-
-    if rows:
-        append_rows_to_csv(rows, output_path)
-        completed_rows += len(rows)
-        print(f"rows completed so far: {completed_rows}")
-        print(f"rows remaining: {len(df) - completed_rows}")
-
-    return pd.read_csv(output_path)
+    df_out.loc[df["vt_detection_rate"].isna(), "vt_score"] = float("nan")
+    df_out.to_csv(output_path, index=False)
+    return df_out
 
 
 def build_training_pipeline():
@@ -140,7 +56,7 @@ def build_training_pipeline():
 
 
 def evaluate_stacker_cv(df_features: pd.DataFrame, label_column: str = "label") -> dict:
-    feature_columns = get_signal_feature_columns()
+    feature_columns = get_4signal_feature_columns()
     X = df_features[feature_columns]
     y = df_features[label_column].astype(int)
 
@@ -162,7 +78,7 @@ def evaluate_stacker_cv(df_features: pd.DataFrame, label_column: str = "label") 
 
 
 def train_stacker_model(df_features: pd.DataFrame, label_column: str = "label"):
-    feature_columns = get_signal_feature_columns()
+    feature_columns = get_4signal_feature_columns()
     X = df_features[feature_columns]
     y = df_features[label_column].astype(int)
 
@@ -180,10 +96,8 @@ def measure_inference_time(model, df_features: pd.DataFrame, feature_columns: li
 
 def save_stacker_artifacts(model, feature_columns: list[str], metadata: dict):
     os.makedirs(meta_model_dir, exist_ok=True)
-
     joblib.dump(model, os.path.join(meta_model_dir, "logistic_regression_calibrated.pkl"))
     joblib.dump(feature_columns, os.path.join(meta_model_dir, "signal_feature_columns.pkl"))
-
     with open(os.path.join(meta_model_dir, "meta_model_metadata.json"), "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
@@ -194,7 +108,6 @@ def append_train_results(
     train_time_seconds: float,
     inference_time_seconds: float,
     num_samples: int,
-    bert_architecture: str,
 ):
     column_order = [
         "Model",
@@ -213,11 +126,8 @@ def append_train_results(
         "Note",
     ]
 
-    model_name = f"Stacker model ({os.path.basename(meta_model_dir)})"
-    note = f"sklearn v{sklearn.__version__}; {bert_architecture}"
-
     row = {
-        "Model": model_name,
+        "Model": "Stacker model (4-signal LR meta model v1)",
         "Accuracy": cv_metrics.get("Accuracy"),
         "CV Accuracy": "",
         "CV Std": "",
@@ -227,20 +137,17 @@ def append_train_results(
         "Train Time (s)": round(train_time_seconds, 3),
         "Inference Time (s)": inference_time_seconds,
         "Saved_at": saved_at.replace(":", "-"),
-        "Training dataset name": training_data_path,
+        "Training dataset name": feature_source_path,
         "ROC-AUC": cv_metrics.get("ROC_AUC"),
         "Num samples in dataset": num_samples,
-        "Note": note,
+        "Note": f"sklearn v{sklearn.__version__}; 4-signal stacker",
     }
 
     df_out = pd.DataFrame([[row.get(col) for col in column_order]], columns=column_order)
-
     try:
         df_existing = pd.read_csv(train_results_output)
         if list(df_existing.columns) != column_order:
             print("Error: all_model_train_results.csv schema does not match expected columns.")
-            print(f"Existing columns: {list(df_existing.columns)}")
-            print(f"Expected columns: {column_order}")
             print("Skipping append to all_model_train_results.csv.")
             return
         df_out = pd.concat([df_existing, df_out], ignore_index=True)
@@ -248,19 +155,14 @@ def append_train_results(
         pass
 
     df_out.to_csv(train_results_output, index=False)
-    print(f"appended stacker training summary to {train_results_output}")
+    print(f"appended 4-signal stacker training summary to {train_results_output}")
 
 
 def main():
     train_start = time.time()
-    print("loading training split")
-    print("building features")
-    df_features = build_feature_dataset(
-        df_dev,
-        label_column=training_label_column,
-        output_path=results_output,
-        batch_size_value=batch_size,
-    )
+    print("loading derived rich-signal feature file")
+    print("building 4-signal feature dataset")
+    df_features = build_4signal_feature_dataset(feature_source_path, results_output)
 
     print("running CV")
     cv_metrics = evaluate_stacker_cv(df_features)
@@ -269,22 +171,20 @@ def main():
     model, feature_columns = train_stacker_model(df_features)
     inference_time_seconds = measure_inference_time(model, df_features, feature_columns)
 
-    bert_metadata = get_active_bert_metadata()
     saved_at = datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S")
     metadata = {
         "saved_at": saved_at,
-        "training_data_path": training_data_path,
-        "label_column": training_label_column,
+        "model_family": "4-signal",
+        "feature_source_path": feature_source_path,
+        "derived_feature_csv_path": results_output,
         "feature_columns": feature_columns,
-        "bert_architecture": bert_metadata["bert_architecture"],
         "calibration_method": "sigmoid",
         "label_convention": {
             "benign": 1,
             "phishing": 0,
         },
         "cv_metrics": cv_metrics,
-        "batch_size": batch_size,
-        "feature_csv_path": results_output,
+        "note": "Derived from richer stacker_training_features.csv",
     }
 
     print("saving artifacts")
@@ -295,10 +195,9 @@ def main():
         train_time_seconds=time.time() - train_start,
         inference_time_seconds=inference_time_seconds,
         num_samples=len(df_features),
-        bert_architecture=bert_metadata["bert_architecture"],
     )
 
-    print("Stacker training complete.")
+    print("4-signal stacker training complete.")
     print(cv_metrics)
 
 

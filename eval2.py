@@ -27,7 +27,7 @@ results_output = "data/results/results.csv"
 fig_dir = "data/figures"
 timezone = "US/Eastern"
 data_type = "new_data"  # can use old_data or new_data
-fusion_mode = "average"  # can use average or stacking
+fusion_mode = "stacking_rich"  # can use average, stacking_rich, or stacking_4signal
 
 os.makedirs(fig_dir, exist_ok=True)
 
@@ -60,7 +60,7 @@ dataset_config = {
 if data_type not in dataset_config:
     raise ValueError(f"Unsupported data_type: {data_type}")
 
-if fusion_mode not in {"average", "stacking"}:
+if fusion_mode not in {"average", "stacking_rich", "stacking_4signal"}:
     raise ValueError(f"Unsupported fusion_mode: {fusion_mode}")
 
 
@@ -72,9 +72,17 @@ def map_prediction_to_label(status: str) -> int:
 
 
 def get_prediction_fields() -> tuple[str, str]:
-    if fusion_mode == "stacking":
+    if fusion_mode in {"stacking_rich", "stacking_4signal"}:
         return "stacking_prediction", "stacking_score"
     return "std_prediction", "ensemble_score"
+
+
+def get_stacker_variant() -> str | None:
+    if fusion_mode == "stacking_rich":
+        return "rich"
+    if fusion_mode == "stacking_4signal":
+        return "4signal"
+    return None
 
 
 def run_split_evaluation(df: pd.DataFrame, split_name: str):
@@ -83,13 +91,14 @@ def run_split_evaluation(df: pd.DataFrame, split_name: str):
 
     prediction_field, score_field = get_prediction_fields()
     label_column = active_dataset["label_column"]
+    stacker_variant = get_stacker_variant()
 
     for _, row in df.iterrows():
         result = ml_inference({"url": row.url})
         result = ensemble_decision(result)
 
-        if fusion_mode == "stacking":
-            result = stacking_decision(result)
+        if stacker_variant is not None:
+            result = stacking_decision(result, stacker_variant=stacker_variant)
 
         pred_label = result[prediction_field]
         score = result[score_field]
@@ -135,7 +144,7 @@ def plot_score_distribution(scores, labels, split_name: str):
     plt.figure(figsize=(7, 4))
     plt.hist(scores[labels == 1], bins=30, alpha=0.6, label="Benign", density=True)
     plt.hist(scores[labels == 0], bins=30, alpha=0.6, label="Phishing", density=True)
-    plt.xlabel("Stacking Score" if fusion_mode == "stacking" else "Standard Ensemble Score")
+    plt.xlabel("Stacking Score" if fusion_mode != "average" else "Standard Ensemble Score")
     plt.ylabel("Density")
     plt.title(title)
     plt.legend()

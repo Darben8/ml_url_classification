@@ -1,0 +1,26 @@
+{
+  "saved_at": "2026-04-16 19:03:33",
+  "model_family": "4-signal",
+  "feature_source_path": "data/results/stacker_training_features.csv",
+  "derived_feature_csv_path": "data/results/stacker_training_features_4signal.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_score",
+    "vt_score",
+    "tranco_score"
+  ],
+  "calibration_method": "sigmoid",
+  "label_convention": {
+    "benign": 1,
+    "phishing": 0
+  },
+  "cv_metrics": {
+    "Accuracy": 0.9886729710069625,
+    "Precision": 0.9834977883633889,
+    "Recall": 0.9979285344381149,
+    "F1": 0.9906606117727701,
+    "ROC_AUC": 0.9932823850158583,
+    "Num Samples": 9623
+  },
+  "note": "Derived from richer stacker_training_features.csv"
+}
