@@ -1,0 +1,25 @@
+{
+  "saved_at": "2026-04-19 04:25:21",
+  "model_name": "Support Vector Machine",
+  "feature_set_label": "4signal",
+  "feature_csv_path": "data/results/stacker_training_features_4signal.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_score",
+    "vt_score",
+    "tranco_score"
+  ],
+  "metrics": {
+    "Accuracy": 0.9892622099064773,
+    "CV Accuracy": 0.9882719924923833,
+    "CV Std": 0.0011876097119826081,
+    "Precision": 0.9841179807146909,
+    "Recall": 0.9982738780207134,
+    "F1": 0.9911453870322765,
+    "ROC_AUC": 0.9879767366629911,
+    "Train Time (s)": 0.435,
+    "Inference Time (s)": 0.052,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

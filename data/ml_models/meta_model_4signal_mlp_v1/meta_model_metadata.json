@@ -1,0 +1,25 @@
+{
+  "saved_at": "2026-04-19 04:25:21",
+  "model_name": "Multi-layer Perceptron",
+  "feature_set_label": "4signal",
+  "feature_csv_path": "data/results/stacker_training_features_4signal.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_score",
+    "vt_score",
+    "tranco_score"
+  ],
+  "metrics": {
+    "Accuracy": 0.9885694492552823,
+    "CV Accuracy": 0.9878266683409004,
+    "CV Std": 0.0017936066443816252,
+    "Precision": 0.9835507657402155,
+    "Recall": 0.997698504027618,
+    "F1": 0.9905741216795202,
+    "ROC_AUC": 0.9943584304558625,
+    "Train Time (s)": 1.221,
+    "Inference Time (s)": 0.004,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

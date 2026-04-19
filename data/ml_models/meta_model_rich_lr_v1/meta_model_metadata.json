@@ -1,0 +1,34 @@
+{
+  "saved_at": "2026-04-19 04:22:52",
+  "model_name": "Logistic Regression",
+  "feature_set_label": "rich_signal",
+  "feature_csv_path": "data/results/stacker_training_features.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_benign_prob",
+    "vt_detection_rate",
+    "vt_malicious_count",
+    "vt_suspicious_count",
+    "vt_total_engines",
+    "in_tranco",
+    "tranco_score",
+    "tranco_rank",
+    "bert_error",
+    "catboost_error",
+    "vt_error",
+    "tranco_error"
+  ],
+  "metrics": {
+    "Accuracy": 0.9892622099064773,
+    "CV Accuracy": 0.9902017671977953,
+    "CV Std": 0.0008671317018069227,
+    "Precision": 0.9863247863247864,
+    "Recall": 0.9959723820483314,
+    "F1": 0.9911251073575723,
+    "ROC_AUC": 0.9946819218392738,
+    "Train Time (s)": 0.033,
+    "Inference Time (s)": 0.003,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

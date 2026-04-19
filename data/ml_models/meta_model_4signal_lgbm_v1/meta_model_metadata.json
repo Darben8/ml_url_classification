@@ -1,0 +1,25 @@
+{
+  "saved_at": "2026-04-19 04:25:21",
+  "model_name": "LightGBM",
+  "feature_set_label": "4signal",
+  "feature_csv_path": "data/results/stacker_training_features_4signal.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_score",
+    "vt_score",
+    "tranco_score"
+  ],
+  "metrics": {
+    "Accuracy": 0.9934187738136474,
+    "CV Accuracy": 0.9937648009974908,
+    "CV Std": 0.003340011068219808,
+    "Precision": 0.9908623643632211,
+    "Recall": 0.9982738780207134,
+    "F1": 0.994554313556893,
+    "ROC_AUC": 0.9984929608074664,
+    "Train Time (s)": 0.138,
+    "Inference Time (s)": 0.017,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

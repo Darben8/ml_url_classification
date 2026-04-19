@@ -14,3 +14,5 @@ joblib
 scikit-learn
 numpy
 matplotlib
+lightgbm
+xgboost

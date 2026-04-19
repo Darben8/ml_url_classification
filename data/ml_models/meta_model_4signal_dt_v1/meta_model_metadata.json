@@ -1,0 +1,25 @@
+{
+  "saved_at": "2026-04-19 04:25:21",
+  "model_name": "Decision Tree",
+  "feature_set_label": "4signal",
+  "feature_csv_path": "data/results/stacker_training_features_4signal.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_score",
+    "vt_score",
+    "tranco_score"
+  ],
+  "metrics": {
+    "Accuracy": 0.9909941115344648,
+    "CV Accuracy": 0.9896081852407482,
+    "CV Std": 0.0031493084111988484,
+    "Precision": 0.9885844748858448,
+    "Recall": 0.996547756041427,
+    "F1": 0.9925501432664756,
+    "ROC_AUC": 0.9873590483945113,
+    "Train Time (s)": 0.017,
+    "Inference Time (s)": 0.004,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

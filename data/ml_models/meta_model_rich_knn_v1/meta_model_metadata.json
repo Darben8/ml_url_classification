@@ -1,0 +1,34 @@
+{
+  "saved_at": "2026-04-19 04:22:52",
+  "model_name": "K Nearest Neighbors",
+  "feature_set_label": "rich_signal",
+  "feature_csv_path": "data/results/stacker_training_features.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_benign_prob",
+    "vt_detection_rate",
+    "vt_malicious_count",
+    "vt_suspicious_count",
+    "vt_total_engines",
+    "in_tranco",
+    "tranco_score",
+    "tranco_rank",
+    "bert_error",
+    "catboost_error",
+    "vt_error",
+    "tranco_error"
+  ],
+  "metrics": {
+    "Accuracy": 0.9896085902320748,
+    "CV Accuracy": 0.9897563328993544,
+    "CV Std": 0.002223012966825756,
+    "Precision": 0.9857792946530148,
+    "Recall": 0.9971231300345225,
+    "F1": 0.9914187643020596,
+    "ROC_AUC": 0.9928789330993779,
+    "Train Time (s)": 0.02,
+    "Inference Time (s)": 0.073,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

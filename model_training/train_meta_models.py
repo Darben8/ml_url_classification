@@ -9,10 +9,14 @@ import joblib
 import pandas as pd
 import sklearn
 from catboost import CatBoostClassifier
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -31,7 +35,7 @@ except ModuleNotFoundError:
     XGBClassifier = None
 
 
-feature_set_label = "rich_signal"  # can use rich_signal or 4signal
+feature_set_label = "4signal"  # can use rich_signal or 4signal
 results_dir = "data/results"
 train_results_output = "data/results/all_model_train_results.csv"
 ml_models_dir = "data/ml_models"
@@ -80,38 +84,47 @@ model_specs = {
     "Logistic Regression": {
         "short_name": "lr",
         "builder": lambda: LogisticRegression(max_iter=1000, random_state=random_state),
+        "use_scaler": True,
     },
     "Naive Bayes": {
         "short_name": "nb",
         "builder": lambda: GaussianNB(),
+        "use_scaler": False,
     },
     "Decision Tree": {
         "short_name": "dt",
         "builder": lambda: DecisionTreeClassifier(random_state=random_state, max_depth=10),
+        "use_scaler": False,
     },
     "Random Forest": {
         "short_name": "rf",
         "builder": lambda: RandomForestClassifier(n_estimators=100, random_state=random_state, n_jobs=-1),
+        "use_scaler": False,
     },
     "Gradient Boosting": {
         "short_name": "gb",
         "builder": lambda: GradientBoostingClassifier(n_estimators=100, random_state=random_state),
+        "use_scaler": False,
     },
     "K Nearest Neighbors": {
         "short_name": "knn",
         "builder": lambda: KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
+        "use_scaler": True,
     },
     "CatBoost Classifier": {
         "short_name": "cb",
         "builder": lambda: CatBoostClassifier(verbose=0, random_state=random_state),
+        "use_scaler": False,
     },
     "Support Vector Machine": {
         "short_name": "svm",
         "builder": lambda: SVC(probability=True, random_state=random_state),
+        "use_scaler": True,
     },
     "Multi-layer Perceptron": {
         "short_name": "mlp",
         "builder": lambda: MLPClassifier(hidden_layer_sizes=(100,), max_iter=1000, random_state=random_state),
+        "use_scaler": True,
     },
 }
 
@@ -125,12 +138,14 @@ if XGBClassifier is not None:
             random_state=random_state,
             n_jobs=-1,
         ),
+        "use_scaler": False,
     }
 
 if LGBMClassifier is not None:
     model_specs["LightGBM"] = {
         "short_name": "lgbm",
         "builder": lambda: LGBMClassifier(random_state=random_state, n_jobs=-1, verbose=-1),
+        "use_scaler": False,
     }
 
 
@@ -162,6 +177,29 @@ def get_model_score_values(model, X: pd.DataFrame):
     if hasattr(model, "decision_function"):
         return model.decision_function(X)
     return model.predict(X)
+
+
+def build_model_pipeline(model_name: str):
+    model = model_specs[model_name]["builder"]()
+    use_scaler = model_specs[model_name].get("use_scaler", False)
+
+    numeric_steps = [("imputer", SimpleImputer(strategy="constant", fill_value=0))]
+    if use_scaler:
+        numeric_steps.append(("scaler", StandardScaler()))
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("numeric", Pipeline(steps=numeric_steps), slice(0, None)),
+        ],
+        remainder="drop",
+    )
+
+    return Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("model", model),
+        ]
+    )
 
 
 def save_model_artifacts(model_name: str, model, feature_columns: list[str], metrics: dict, saved_at: str):
@@ -255,19 +293,22 @@ def train_and_evaluate_model(model_name: str, df: pd.DataFrame) -> dict:
         random_state=random_state,
     )
 
-    model = model_specs[model_name]["builder"]()
+    model = build_model_pipeline(model_name)
 
+    tqdm.write(f"[{model_name}] training...")
     train_start = time.time()
     model.fit(X_train, y_train)
     train_time = round(time.time() - train_start, 3)
 
+    tqdm.write(f"[{model_name}] evaluating...")
     inference_start = time.time()
     y_pred = model.predict(X_test)
     inference_time = round(time.time() - inference_start, 3)
 
+    tqdm.write(f"[{model_name}] cross-validating...")
     score_values = get_model_score_values(model, X_test)
     cv_scores = cross_val_score(
-        model_specs[model_name]["builder"](),
+        build_model_pipeline(model_name),
         X_train,
         y_train,
         cv=cv_folds,
@@ -304,9 +345,20 @@ def main():
 
     saved_at = datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S")
 
-    for model_name in tqdm(model_specs.keys(), desc="Training meta models", total=len(model_specs)):
-        print(f"training {model_name}")
+    model_loop = tqdm(model_specs.keys(), desc="Training meta models", total=len(model_specs))
+
+    for model_name in model_loop:
+        model_loop.set_postfix(current_model=model_name)
+        phase_bar = tqdm(
+            total=4,
+            desc=f"{model_name} phases",
+            leave=False,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} phases [{percentage:3.0f}%]",
+        )
+
         result = train_and_evaluate_model(model_name, df)
+        phase_bar.update(3)
+        phase_bar.set_description(f"{model_name} saving")
         folder_name = save_model_artifacts(
             model_name=model_name,
             model=result["model"],
@@ -320,6 +372,8 @@ def main():
             saved_at=saved_at,
             folder_name=folder_name,
         )
+        phase_bar.update(1)
+        phase_bar.close()
         print(
             f"{model_name} complete "
             f"(Accuracy: {result['metrics']['Accuracy']:.4f}, F1: {result['metrics']['F1']:.4f})"

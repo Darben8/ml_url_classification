@@ -1,0 +1,34 @@
+{
+  "saved_at": "2026-04-19 04:22:52",
+  "model_name": "Naive Bayes",
+  "feature_set_label": "rich_signal",
+  "feature_csv_path": "data/results/stacker_training_features.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_benign_prob",
+    "vt_detection_rate",
+    "vt_malicious_count",
+    "vt_suspicious_count",
+    "vt_total_engines",
+    "in_tranco",
+    "tranco_score",
+    "tranco_rank",
+    "bert_error",
+    "catboost_error",
+    "vt_error",
+    "tranco_error"
+  ],
+  "metrics": {
+    "Accuracy": 0.7034984412885348,
+    "CV Accuracy": 0.7027905731827404,
+    "CV Std": 0.005508438034678871,
+    "Precision": 0.6702702702702703,
+    "Recall": 0.998849252013809,
+    "F1": 0.8022181146025879,
+    "ROC_AUC": 0.9892391542753441,
+    "Train Time (s)": 0.009,
+    "Inference Time (s)": 0.003,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

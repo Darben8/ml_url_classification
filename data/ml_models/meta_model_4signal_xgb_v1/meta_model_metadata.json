@@ -1,0 +1,25 @@
+{
+  "saved_at": "2026-04-19 04:25:21",
+  "model_name": "XGBoost",
+  "feature_set_label": "4signal",
+  "feature_csv_path": "data/results/stacker_training_features_4signal.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_score",
+    "vt_score",
+    "tranco_score"
+  ],
+  "metrics": {
+    "Accuracy": 0.9948042951160374,
+    "CV Accuracy": 0.9928740425475671,
+    "CV Std": 0.002078906753568515,
+    "Precision": 0.9925671812464265,
+    "Recall": 0.998849252013809,
+    "F1": 0.9956983080011471,
+    "ROC_AUC": 0.9981907517519113,
+    "Train Time (s)": 0.075,
+    "Inference Time (s)": 0.008,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}

@@ -1,0 +1,34 @@
+{
+  "saved_at": "2026-04-19 04:22:52",
+  "model_name": "CatBoost Classifier",
+  "feature_set_label": "rich_signal",
+  "feature_csv_path": "data/results/stacker_training_features.csv",
+  "feature_columns": [
+    "bert_score",
+    "cb_benign_prob",
+    "vt_detection_rate",
+    "vt_malicious_count",
+    "vt_suspicious_count",
+    "vt_total_engines",
+    "in_tranco",
+    "tranco_score",
+    "tranco_rank",
+    "bert_error",
+    "catboost_error",
+    "vt_error",
+    "tranco_error"
+  ],
+  "metrics": {
+    "Accuracy": 0.9930723934880499,
+    "CV Accuracy": 0.993467734651572,
+    "CV Std": 0.002319746767191937,
+    "Precision": 0.990296803652968,
+    "Recall": 0.9982738780207134,
+    "F1": 0.994269340974212,
+    "ROC_AUC": 0.9985958671221586,
+    "Train Time (s)": 4.453,
+    "Inference Time (s)": 0.013,
+    "Num Samples": 9623
+  },
+  "sklearn_version": "1.8.0"
+}
