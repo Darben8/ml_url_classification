@@ -1,0 +1,15 @@
+{
+  "meta_model_id": "meta_model_4signal_gb_v1",
+  "feature_set": "4signal",
+  "model_family": "Gradient Boosting",
+  "model_artifact": "data/ml_models/meta_model_4signal_gb_v1/meta_model.pkl",
+  "feature_columns_artifact": "data/ml_models/meta_model_4signal_gb_v1/signal_feature_columns.pkl",
+  "score_field": "stacking_score",
+  "prediction_field": "stacking_prediction",
+  "label_convention": {
+    "benign": 1,
+    "phishing": 0
+  },
+  "selected_on": "2026-06-03",
+  "selection_basis": "Best accuracy/inference-time tradeoff from data/results/results.csv"
+}

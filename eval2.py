@@ -23,11 +23,12 @@ from graph.nodes.stacking_inference import stacking_decision
 from models.bert_model import get_active_bert_metadata
 
 
-results_output = "data/results/results.csv"
+#results_output = "data/results/results.csv"
+results_output = "data/results/paper_results.csv"
 fig_dir = "data/figures"
 timezone = "US/Eastern"
 data_type = "new_data"  # can use old_data or new_data
-fusion_mode = "stacking_rich"  # can use average, stacking_rich, or stacking_4signal
+fusion_mode = "average"  # can use average, stacking_rich, or stacking_4signal
 
 os.makedirs(fig_dir, exist_ok=True)
 

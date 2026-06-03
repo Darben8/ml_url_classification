@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -20,11 +21,17 @@ from models.bert_model import get_active_bert_metadata
 from models.fusion_features import build_signal_features
 
 
-results_output = "data/results/results.csv"
+results_output = "data/results/meta_model_results.csv"
 ml_models_dir = Path("data/ml_models")
 timezone = "US/Eastern"
 data_type = "new_data"  # can use old_data or new_data
 fusion_modes = ["average", "stacking_rich", "stacking_4signal"]
+
+warnings.filterwarnings(
+    "ignore",
+    message="X does not have valid feature names, but LGBMClassifier was fitted with feature names",
+    category=UserWarning,
+)
 
 
 dataset_config = {
@@ -216,6 +223,20 @@ def calculate_metrics(
     }
 
 
+def build_failed_metrics(split_name: str, num_samples: int) -> dict:
+    return {
+        "Split": split_name,
+        "Accuracy": np.nan,
+        "Precision": np.nan,
+        "Recall": np.nan,
+        "F1": np.nan,
+        "ROC_AUC": np.nan,
+        "Inference Time (s)": np.nan,
+        "Avg Time / URL (s)": np.nan,
+        "Num Samples": num_samples,
+    }
+
+
 def evaluate_average(states: list[dict], labels: list[int], split_name: str) -> dict:
     start = time.time()
     scores = [state["ensemble_score"] for state in states]
@@ -281,6 +302,8 @@ def build_result_row(
     metadata: dict,
     active_data_type: str,
     bert_architecture: str,
+    evaluation_status: str = "success",
+    evaluation_error: str = "",
 ) -> dict:
     row = {
         "ensemble_type": "standard" if fusion_mode == "average" else "n/a",
@@ -290,6 +313,8 @@ def build_result_row(
         "Meta Model Name": model_name,
         "Meta Model ID": model_id,
         "Model Artifact": model_path,
+        "Evaluation Status": evaluation_status,
+        "Evaluation Error": evaluation_error,
         "saved_at": datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S"),
     }
     row.update(metrics)
@@ -331,10 +356,7 @@ def main():
 
     print_configuration(args.data_type, selected_fusion_modes, model_specs, args.output)
 
-    loaded_models = {
-        spec.model_id: joblib.load(spec.model_path)
-        for spec in model_specs
-    }
+    loaded_models = {}
 
     rows = []
     for split_name, split_df in active_dataset["splits"].items():
@@ -360,13 +382,26 @@ def main():
 
         for spec in model_specs:
             print(f"Evaluating {spec.model_id} on {split_name}")
-            metrics = evaluate_meta_model(
-                spec=spec,
-                model=loaded_models[spec.model_id],
-                states=states,
-                labels=labels,
-                split_name=split_name,
-            )
+            evaluation_status = "success"
+            evaluation_error = ""
+
+            try:
+                if spec.model_id not in loaded_models:
+                    loaded_models[spec.model_id] = joblib.load(spec.model_path)
+
+                metrics = evaluate_meta_model(
+                    spec=spec,
+                    model=loaded_models[spec.model_id],
+                    states=states,
+                    labels=labels,
+                    split_name=split_name,
+                )
+            except Exception as exc:
+                evaluation_status = "failed"
+                evaluation_error = f"{type(exc).__name__}: {exc}"
+                metrics = build_failed_metrics(split_name, len(labels))
+                print(f"Skipping {spec.model_id} on {split_name}: {evaluation_error}")
+
             rows.append(
                 build_result_row(
                     metrics=metrics,
@@ -377,6 +412,8 @@ def main():
                     metadata=spec.metadata,
                     active_data_type=args.data_type,
                     bert_architecture=bert_architecture,
+                    evaluation_status=evaluation_status,
+                    evaluation_error=evaluation_error,
                 )
             )
 
