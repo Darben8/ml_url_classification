@@ -13,5 +13,8 @@ debug
 test_output
 tests
 run_inference
+.data.ml_models.ablation
+data/ml_models/meta models/
+data/ml_models/ablation/
 
 #agentic_url_classifier.drawio

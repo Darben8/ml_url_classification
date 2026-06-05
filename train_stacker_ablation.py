@@ -19,6 +19,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 
 TIMEZONE = "US/Eastern"
@@ -55,6 +57,13 @@ ABLATION_COLUMN_CONFIG = {
         "intrinsic_and_vt": ["bert_score", "cb_score", "vt_score"],
         "intrinsic_and_tranco": ["bert_score", "cb_score", "tranco_score"],
         "extrinsic": ["vt_score", "tranco_score"],
+        "all_signals": ["bert_score", "cb_score", "vt_score", "tranco_score"],
+        # "bert_only": ["bert_score"],
+        # "cb_only": ["cb_score"],
+        "bert_vt": ["bert_score", "vt_score"],
+        "bert_tranco": ["bert_score", "tranco_score"],
+        "cb_vt": ["cb_score", "vt_score"],
+        "cb_tranco": ["cb_score", "tranco_score"],
     },
     "rich": {
         "intrinsic_only": ["bert_score", "cb_benign_prob"],
@@ -82,6 +91,21 @@ ABLATION_COLUMN_CONFIG = {
             "tranco_score",
             "tranco_rank",
         ],
+        "all_signals": [
+            "bert_score",
+            "cb_benign_prob",
+            "vt_detection_rate",
+            "vt_malicious_count",
+            "vt_suspicious_count",
+            "vt_total_engines",
+            "in_tranco",
+            "tranco_score",
+            "tranco_rank",
+        ],
+        "bert_vt": ["bert_score", "vt_detection_rate", "vt_malicious_count", "vt_suspicious_count", "vt_total_engines"],
+        "bert_tranco": ["bert_score", "in_tranco", "tranco_score", "tranco_rank"],
+        "cb_vt": ["cb_benign_prob", "vt_detection_rate", "vt_malicious_count", "vt_suspicious_count", "vt_total_engines"],
+        "cb_tranco": ["cb_benign_prob", "in_tranco", "tranco_score", "tranco_rank"],
     },
     "richops": {
         "intrinsic_only": [
@@ -122,6 +146,55 @@ ABLATION_COLUMN_CONFIG = {
             "vt_error",
             "tranco_error",
         ],
+        "all_signals": [
+            "bert_score",
+            "cb_benign_prob",
+            "vt_detection_rate",
+            "vt_malicious_count",
+            "vt_suspicious_count",
+            "vt_total_engines",
+            "in_tranco",
+            "tranco_score",
+            "tranco_rank",
+            "bert_error",
+            "catboost_error",
+            "vt_error",
+            "tranco_error",
+        ],
+        "bert_vt": [
+            "bert_score",
+            "vt_detection_rate",
+            "vt_malicious_count",
+            "vt_suspicious_count",
+            "vt_total_engines",
+            "bert_error",
+            "vt_error",
+        ],
+        "bert_tranco": [
+            "bert_score",
+            "in_tranco",
+            "tranco_score",
+            "tranco_rank",
+            "bert_error",
+            "tranco_error",
+        ],
+        "cb_vt": [
+            "cb_benign_prob",
+            "vt_detection_rate",
+            "vt_malicious_count",
+            "vt_suspicious_count",
+            "vt_total_engines",
+            "catboost_error",
+            "vt_error",
+        ],
+        "cb_tranco": [
+            "cb_benign_prob",
+            "in_tranco",
+            "tranco_score",
+            "tranco_rank",
+            "catboost_error",
+            "tranco_error",
+        ],
     },
 }
 
@@ -131,6 +204,8 @@ MODEL_DISPLAY_NAMES = {
     "lr": "Logistic Regression",
     "svm": "Support Vector Machine",
     "mlp": "Multi-layer Perceptron",
+    "cb": "CatBoost",
+    "xgb": "XGBoost",
 }
 
 
@@ -234,6 +309,22 @@ def build_training_pipeline(model_name: str):
             steps=[
                 ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
                 ("clf", GradientBoostingClassifier(random_state=42)),
+            ]
+        )
+    
+    if model_name == "cb":
+        return Pipeline(
+            steps=[
+                ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
+                ("clf", CatBoostClassifier(verbose=0, random_state=42)),
+            ]
+        )
+    
+    if model_name == "xgb":
+        return Pipeline(
+            steps=[
+                ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
+                ("clf", XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42)),
             ]
         )
 

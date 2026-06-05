@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import matplotlib.pyplot as plt
@@ -23,12 +24,16 @@ from graph.nodes.stacking_inference import stacking_decision
 from models.bert_model import get_active_bert_metadata
 
 
-#results_output = "data/results/results.csv"
-results_output = "data/results/paper_results.csv"
+results_output = "data/results/results.csv"
 fig_dir = "data/figures"
 timezone = "US/Eastern"
 data_type = "new_data"  # can use old_data or new_data
-fusion_mode = "average"  # can use average, stacking_rich, or stacking_4signal
+fusion_mode = "stacking_selected"  # can use average, stacking_rich, stacking_4signal, or stacking_selected
+selected_stacker_variant = "4signal"  # feature family for stacking_selected: rich or 4signal
+#selected_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+# decision tree and gradient boosting models performed best in meta model ablation
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_extrinsic_dt")
+#selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_richops_cb_vt_gb")
 
 os.makedirs(fig_dir, exist_ok=True)
 
@@ -61,8 +66,11 @@ dataset_config = {
 if data_type not in dataset_config:
     raise ValueError(f"Unsupported data_type: {data_type}")
 
-if fusion_mode not in {"average", "stacking_rich", "stacking_4signal"}:
+if fusion_mode not in {"average", "stacking_rich", "stacking_4signal", "stacking_selected"}:
     raise ValueError(f"Unsupported fusion_mode: {fusion_mode}")
+
+if selected_stacker_variant not in {"rich", "4signal"}:
+    raise ValueError(f"Unsupported selected_stacker_variant: {selected_stacker_variant}")
 
 
 active_dataset = dataset_config[data_type]
@@ -73,7 +81,7 @@ def map_prediction_to_label(status: str) -> int:
 
 
 def get_prediction_fields() -> tuple[str, str]:
-    if fusion_mode in {"stacking_rich", "stacking_4signal"}:
+    if fusion_mode in {"stacking_rich", "stacking_4signal", "stacking_selected"}:
         return "stacking_prediction", "stacking_score"
     return "std_prediction", "ensemble_score"
 
@@ -83,6 +91,14 @@ def get_stacker_variant() -> str | None:
         return "rich"
     if fusion_mode == "stacking_4signal":
         return "4signal"
+    if fusion_mode == "stacking_selected":
+        return selected_stacker_variant
+    return None
+
+
+def get_selected_model_dir() -> str | None:
+    if fusion_mode == "stacking_selected":
+        return str(selected_meta_model_dir)
     return None
 
 
@@ -93,13 +109,18 @@ def run_split_evaluation(df: pd.DataFrame, split_name: str):
     prediction_field, score_field = get_prediction_fields()
     label_column = active_dataset["label_column"]
     stacker_variant = get_stacker_variant()
+    model_dir = get_selected_model_dir()
 
     for _, row in df.iterrows():
         result = ml_inference({"url": row.url})
         result = ensemble_decision(result)
 
         if stacker_variant is not None:
-            result = stacking_decision(result, stacker_variant=stacker_variant)
+            result = stacking_decision(
+                result,
+                stacker_variant=stacker_variant,
+                model_dir=model_dir,
+            )
 
         pred_label = result[prediction_field]
         score = result[score_field]
@@ -184,6 +205,12 @@ def save_metrics(metrics: dict):
     metrics["data_type"] = data_type
     metrics["bert_architecture"] = bert_architecture
     metrics["fusion_mode"] = fusion_mode
+    metrics["selected_meta_model_dir"] = (
+        str(selected_meta_model_dir) if fusion_mode == "stacking_selected" else ""
+    )
+    metrics["selected_stacker_variant"] = (
+        selected_stacker_variant if fusion_mode == "stacking_selected" else ""
+    )
 
     column_order = [
         "Split",
@@ -200,6 +227,8 @@ def save_metrics(metrics: dict):
         "data_type",
         "bert_architecture",
         "fusion_mode",
+        "selected_meta_model_dir",
+        "selected_stacker_variant",
     ]
 
     df_out = pd.DataFrame([[metrics.get(col) for col in column_order]], columns=column_order)
@@ -219,6 +248,10 @@ def print_active_configuration():
     print(f"Fusion mode: {fusion_mode}")
     print(f"BERT architecture: {bert_architecture}")
     print(f"Results output: {results_output}")
+
+    if fusion_mode == "stacking_selected":
+        print(f"Selected stacker variant: {selected_stacker_variant}")
+        print(f"Selected meta model dir: {selected_meta_model_dir}")
 
     for split_name, split_df in active_dataset["splits"].items():
         label_column = active_dataset["label_column"]

@@ -18,13 +18,21 @@ def build_4signal_features(state: dict) -> dict:
     }
 
 
-def stacking_decision(state: dict, stacker_variant: str = "rich") -> dict:
+def stacking_decision(
+    state: dict,
+    stacker_variant: str = "rich",
+    model_dir: str | None = None,
+) -> dict:
     if stacker_variant == "4signal":
         features = build_4signal_features(state)
     else:
         features = build_signal_features(state)
 
-    stacking_result = predict_meta_model(features, stacker_variant=stacker_variant)
+    stacking_result = predict_meta_model(
+        features,
+        stacker_variant=stacker_variant,
+        model_dir=model_dir,
+    )
 
     state["stacking_features"] = features
     state.update(stacking_result)

@@ -21,8 +21,9 @@ from models.bert_model import get_active_bert_metadata
 from models.fusion_features import build_signal_features
 
 
-results_output = "data/results/meta_model_results.csv"
+results_output = "data/results/results.csv"
 ml_models_dir = Path("data/ml_models")
+ablation_models_dir = ml_models_dir / "ablation"
 timezone = "US/Eastern"
 data_type = "new_data"  # can use old_data or new_data
 fusion_modes = ["average", "stacking_rich", "stacking_4signal"]
@@ -63,6 +64,7 @@ class MetaModelSpec:
     feature_columns: list[str]
     fusion_mode: str
     metadata: dict
+    model_source: str
 
 
 def parse_args():
@@ -87,6 +89,12 @@ def parse_args():
         default=results_output,
         help="CSV path for the comparison table.",
     )
+    parser.add_argument(
+        "--model-source",
+        choices=["standard", "ablation", "both"],
+        default="standard",
+        help="Which saved model roots to evaluate.",
+    )
     return parser.parse_args()
 
 
@@ -108,12 +116,13 @@ def find_model_artifact(model_dir: Path) -> Path | None:
 
 
 def infer_fusion_mode(model_dir: Path, metadata: dict, feature_columns: list[str]) -> str | None:
-    feature_set_label = metadata.get("feature_set_label", "")
+    feature_set_label = str(metadata.get("feature_set_label", "")).lower()
+    ablation_group = str(metadata.get("ablation_group", "")).lower()
     model_id = model_dir.name.lower()
 
-    if feature_set_label == "4signal" or "4signal" in model_id:
+    if feature_set_label in {"4signal", "4sig"} or ablation_group == "4sig" or "4signal" in model_id or "_4sig_" in model_id:
         return "stacking_4signal"
-    if feature_set_label == "rich_signal" or "rich" in model_id:
+    if feature_set_label in {"rich_signal", "rich", "richops"} or ablation_group in {"rich", "richops"} or "rich" in model_id:
         return "stacking_rich"
     if len(feature_columns) == 4 and {"bert_score", "cb_score", "vt_score", "tranco_score"}.issubset(feature_columns):
         return "stacking_4signal"
@@ -130,37 +139,54 @@ def infer_model_name(model_path: Path, metadata: dict) -> str:
     return "Unknown Meta Model"
 
 
-def discover_meta_models(selected_fusion_modes: list[str]) -> list[MetaModelSpec]:
+def iter_model_roots(model_source: str) -> list[tuple[str, Path]]:
+    if model_source == "standard":
+        return [("standard", ml_models_dir)]
+    if model_source == "ablation":
+        return [("ablation", ablation_models_dir)]
+    if model_source == "both":
+        return [("standard", ml_models_dir), ("ablation", ablation_models_dir)]
+    raise ValueError(f"Unsupported model_source: {model_source}")
+
+
+def discover_meta_models(selected_fusion_modes: list[str], model_source: str) -> list[MetaModelSpec]:
     specs = []
-    if not ml_models_dir.exists():
-        raise FileNotFoundError(f"Model directory not found: {ml_models_dir}")
 
-    for model_dir in sorted(ml_models_dir.iterdir()):
-        if not model_dir.is_dir() or not model_dir.name.startswith("meta_model"):
+    for source_name, root_dir in iter_model_roots(model_source):
+        if not root_dir.exists():
+            if source_name == "standard":
+                raise FileNotFoundError(f"Model directory not found: {root_dir}")
             continue
 
-        model_path = find_model_artifact(model_dir)
-        feature_columns_path = model_dir / "signal_feature_columns.pkl"
-        if model_path is None or not feature_columns_path.exists():
-            continue
+        for model_dir in sorted(root_dir.iterdir()):
+            if not model_dir.is_dir() or not model_dir.name.startswith("meta_model"):
+                continue
+            if source_name == "standard" and model_dir.name == "ablation":
+                continue
 
-        metadata = load_metadata(model_dir)
-        feature_columns = joblib.load(feature_columns_path)
-        fusion_mode = infer_fusion_mode(model_dir, metadata, feature_columns)
-        if fusion_mode not in selected_fusion_modes:
-            continue
+            model_path = find_model_artifact(model_dir)
+            feature_columns_path = model_dir / "signal_feature_columns.pkl"
+            if model_path is None or not feature_columns_path.exists():
+                continue
 
-        specs.append(
-            MetaModelSpec(
-                model_id=model_dir.name,
-                model_name=infer_model_name(model_path, metadata),
-                model_dir=model_dir,
-                model_path=model_path,
-                feature_columns=feature_columns,
-                fusion_mode=fusion_mode,
-                metadata=metadata,
+            metadata = load_metadata(model_dir)
+            feature_columns = joblib.load(feature_columns_path)
+            fusion_mode = infer_fusion_mode(model_dir, metadata, feature_columns)
+            if fusion_mode not in selected_fusion_modes:
+                continue
+
+            specs.append(
+                MetaModelSpec(
+                    model_id=model_dir.name,
+                    model_name=infer_model_name(model_path, metadata),
+                    model_dir=model_dir,
+                    model_path=model_path,
+                    feature_columns=feature_columns,
+                    fusion_mode=fusion_mode,
+                    metadata=metadata,
+                    model_source=source_name,
+                )
             )
-        )
 
     return specs
 
@@ -290,6 +316,11 @@ def get_training_metrics(metadata: dict) -> dict:
         "Train ROC-AUC": metrics.get("ROC_AUC"),
         "Train Num samples in dataset": metrics.get("Num Samples"),
         "Train Note": metadata.get("note"),
+        "Ablation Group": metadata.get("ablation_group"),
+        "Ablation Name": metadata.get("ablation_name"),
+        "Ablation Mode": metadata.get("ablation_mode"),
+        "Parent Feature Dataset": metadata.get("parent_feature_dataset"),
+        "Feature Set Description": metadata.get("feature_set_description"),
     }
 
 
@@ -304,6 +335,7 @@ def build_result_row(
     bert_architecture: str,
     evaluation_status: str = "success",
     evaluation_error: str = "",
+    model_source: str = "standard",
 ) -> dict:
     row = {
         "ensemble_type": "standard" if fusion_mode == "average" else "n/a",
@@ -313,6 +345,7 @@ def build_result_row(
         "Meta Model Name": model_name,
         "Meta Model ID": model_id,
         "Model Artifact": model_path,
+        "Model Source": model_source,
         "Evaluation Status": evaluation_status,
         "Evaluation Error": evaluation_error,
         "saved_at": datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -340,9 +373,11 @@ def print_configuration(
     selected_fusion_modes: list[str],
     model_specs: list[MetaModelSpec],
     output_path: str,
+    model_source: str,
 ):
     print(f"Data type: {active_data_type}")
     print(f"Fusion modes: {', '.join(selected_fusion_modes)}")
+    print(f"Model source: {model_source}")
     print(f"Discovered compatible meta models: {len(model_specs)}")
     print(f"Results output: {output_path}")
 
@@ -351,10 +386,17 @@ def main():
     args = parse_args()
     active_dataset = dataset_config[args.data_type]
     selected_fusion_modes = args.fusion_modes
+    include_average = "average" in selected_fusion_modes and args.model_source != "ablation"
     bert_architecture = get_active_bert_metadata()["bert_architecture"]
-    model_specs = discover_meta_models(selected_fusion_modes)
+    model_specs = discover_meta_models(selected_fusion_modes, args.model_source)
 
-    print_configuration(args.data_type, selected_fusion_modes, model_specs, args.output)
+    print_configuration(
+        args.data_type,
+        selected_fusion_modes,
+        model_specs,
+        args.output,
+        args.model_source,
+    )
 
     loaded_models = {}
 
@@ -364,7 +406,7 @@ def main():
         states = compute_base_states(split_df)
         labels = split_df[active_dataset["label_column"]].astype(int).tolist()
 
-        if "average" in selected_fusion_modes:
+        if include_average:
             print(f"Evaluating average ensemble on {split_name}")
             metrics = evaluate_average(states, labels, split_name)
             rows.append(
@@ -377,6 +419,7 @@ def main():
                     metadata={},
                     active_data_type=args.data_type,
                     bert_architecture=bert_architecture,
+                    model_source="standard",
                 )
             )
 
@@ -414,11 +457,12 @@ def main():
                     bert_architecture=bert_architecture,
                     evaluation_status=evaluation_status,
                     evaluation_error=evaluation_error,
+                    model_source=spec.model_source,
                 )
             )
 
     save_results(rows, args.output)
-    print(f"\nSaved {len(rows)} comparison rows to {args.output}")
+    print(f"\nSaved evaluation rows to {args.output}")
 
 
 if __name__ == "__main__":

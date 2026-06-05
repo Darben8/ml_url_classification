@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -19,25 +20,22 @@ from models.bert_model import get_active_bert_metadata
 OUTPUT_CSV = "data/results/paper_robustness.csv"
 TIMEZONE = "US/Eastern"
 
-# Choose which split(s) to run for the paper.
-# Common choice: Test only.
 DATASETS = {
-    #"Validation": df_val,
+    "Validation": df_val,
     "Test": df_test,
 }
 
-# Choose your final paper model variant.
-# Options in current repo: "4signal" or "rich"
-STACKER_VARIANT = "rich"
-MAX_URLS_PER_SPLIT = 100
+STACKER_VARIANT = "4signal"
+chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
 
-# Robustness settings to evaluate
 ROBUSTNESS_SETTINGS = [
     "full",
     "no_vt",
     "no_tranco",
     "no_vt_no_tranco",
 ]
+
+MAX_URLS_PER_SPLIT = None
 
 
 def map_prediction_to_label(prediction: str) -> int:
@@ -113,7 +111,11 @@ def run_split_robustness(df: pd.DataFrame, split_name: str, setting: str) -> dic
         state = ml_inference({"url": row.url})
         state = ensemble_decision(state)
         state = apply_robustness_setting(state, setting)
-        state = stacking_decision(state, stacker_variant=STACKER_VARIANT)
+        state = stacking_decision(
+            state,
+            stacker_variant=STACKER_VARIANT,
+            model_dir=str(chosen_meta_model_dir),
+        )
 
         true_label = int(row.label)
         pred_label = map_prediction_to_label(state["stacking_prediction"])
@@ -130,6 +132,7 @@ def run_split_robustness(df: pd.DataFrame, split_name: str, setting: str) -> dic
         "Split": split_name,
         "Robustness Setting": setting,
         "Stacker Variant": STACKER_VARIANT,
+        "Selected Meta Model Dir": str(chosen_meta_model_dir),
         "Accuracy": metrics["Accuracy"],
         "Precision": metrics["Precision"],
         "Recall": metrics["Recall"],
@@ -158,9 +161,10 @@ def save_results(rows: list[dict], output_csv: str) -> None:
 
 
 def main():
-    print(f"Running paper robustness evaluation")
+    print("Running paper robustness evaluation")
     print(f"Output: {OUTPUT_CSV}")
     print(f"Stacker variant: {STACKER_VARIANT}")
+    print(f"Selected meta model dir: {chosen_meta_model_dir}")
 
     rows = []
 

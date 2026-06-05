@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -21,15 +22,16 @@ TIMEZONE = "US/Eastern"
 
 # Common choice: Test only
 DATASETS = {
-   # "Validation": df_val,
+    "Validation": df_val,
     "Test": df_test,
 }
-MAX_URLS_PER_SPLIT = 100
-# Choose your final paper model variant
-STACKER_VARIANT = "rich"
 
-# Set to True if you want to sort by confidence
+# Final paper model configuration
+STACKER_VARIANT = "4signal"
+chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+
 SORT_BY_CONFIDENCE = True
+MAX_URLS_PER_SPLIT = None
 
 
 def map_prediction_to_label(prediction: str) -> int:
@@ -41,9 +43,9 @@ def get_error_type(true_label: int, pred_label: int) -> str:
     # Benign = 1
     # Phishing = 0
     if true_label == 0 and pred_label == 1:
-        return "False Positive"   # phishing predicted benign
+        return "False Positive"  # phishing predicted benign
     if true_label == 1 and pred_label == 0:
-        return "False Negative"   # benign predicted phishing
+        return "False Negative"  # benign predicted phishing
     return "Correct"
 
 
@@ -96,7 +98,11 @@ def run_error_analysis(df: pd.DataFrame, split_name: str) -> list[dict]:
     for _, row in df.iterrows():
         state = ml_inference({"url": row.url})
         state = ensemble_decision(state)
-        state = stacking_decision(state, stacker_variant=STACKER_VARIANT)
+        state = stacking_decision(
+            state,
+            stacker_variant=STACKER_VARIANT,
+            model_dir=str(chosen_meta_model_dir),
+        )
 
         error_row = build_error_row(row, state, split_name)
         if error_row["error_type"] != "Correct":
@@ -112,6 +118,7 @@ def save_error_outputs(rows: list[dict]) -> None:
     df_errors["saved_at"] = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
     df_errors["bert_architecture"] = get_active_bert_metadata()["bert_architecture"]
     df_errors["stacker_variant"] = STACKER_VARIANT
+    df_errors["selected_meta_model_dir"] = str(chosen_meta_model_dir)
 
     if not df_errors.empty and SORT_BY_CONFIDENCE:
         df_errors["confidence_distance"] = df_errors["stacking_score"].apply(confidence_distance)
@@ -138,6 +145,7 @@ def save_error_outputs(rows: list[dict]) -> None:
 def main():
     print("Running paper error analysis")
     print(f"Stacker variant: {STACKER_VARIANT}")
+    print(f"Selected meta model dir: {chosen_meta_model_dir}")
 
     all_rows = []
 
