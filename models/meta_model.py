@@ -20,6 +20,11 @@ def get_meta_model_dir(stacker_variant: str = "rich", model_dir: str | Path | No
     return meta_model_dirs[stacker_variant]
 
 
+def get_meta_model_name(stacker_variant: str = "rich", model_dir: str | Path | None = None) -> str:
+    model_root = get_meta_model_dir(stacker_variant=stacker_variant, model_dir=model_dir)
+    return model_root.name
+
+
 def _get_model_cache_key(stacker_variant: str, model_dir: str | Path | None) -> str:
     resolved_dir = get_meta_model_dir(stacker_variant=stacker_variant, model_dir=model_dir)
     return str(resolved_dir.resolve())

@@ -10,6 +10,7 @@ from graph.nodes.inference import ml_inference
 from graph.nodes.load_data import df_test, df_val
 from graph.nodes.stacking_inference import stacking_decision
 from models.bert_model import get_active_bert_metadata
+from models.meta_model import get_meta_model_name
 
 # -----------------------------
 # Paper experiment configuration
@@ -22,16 +23,19 @@ TIMEZONE = "US/Eastern"
 
 # Common choice: Test only
 DATASETS = {
-    "Validation": df_val,
+    #"Validation": df_val,
     "Test": df_test,
 }
 
 # Final paper model configuration
 STACKER_VARIANT = "4signal"
-chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+#chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_dt")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_cb")
+chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_gb")
 
 SORT_BY_CONFIDENCE = True
-MAX_URLS_PER_SPLIT = None
+MAX_URLS_PER_SPLIT = 150
 
 
 def map_prediction_to_label(prediction: str) -> int:
@@ -114,11 +118,20 @@ def run_error_analysis(df: pd.DataFrame, split_name: str) -> list[dict]:
 def save_error_outputs(rows: list[dict]) -> None:
     os.makedirs("data/results", exist_ok=True)
 
+    saved_at = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
+    bert_architecture = get_active_bert_metadata()["bert_architecture"]
+    selected_meta_model_name = get_meta_model_name(
+        stacker_variant=STACKER_VARIANT,
+        model_dir=str(chosen_meta_model_dir),
+    )
+    selected_meta_model_dir = str(chosen_meta_model_dir)
+
     df_errors = pd.DataFrame(rows)
-    df_errors["saved_at"] = datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
-    df_errors["bert_architecture"] = get_active_bert_metadata()["bert_architecture"]
+    df_errors["saved_at"] = saved_at
+    df_errors["bert_architecture"] = bert_architecture
     df_errors["stacker_variant"] = STACKER_VARIANT
-    df_errors["selected_meta_model_dir"] = str(chosen_meta_model_dir)
+    df_errors["selected_meta_model_name"] = selected_meta_model_name
+    df_errors["selected_meta_model_dir"] = selected_meta_model_dir
 
     if not df_errors.empty and SORT_BY_CONFIDENCE:
         df_errors["confidence_distance"] = df_errors["stacking_score"].apply(confidence_distance)
@@ -127,12 +140,66 @@ def save_error_outputs(rows: list[dict]) -> None:
             ascending=[True, False],
         )
 
+    # if no errors
+    if df_errors.empty:
+        placeholder_row = {
+            "Split": "Run Summary",
+            "url": "N/A",
+            "source": "N/A",
+            "true_label": "N/A",
+            "pred_label": "N/A",
+            "error_type": "No Errors",
+            "stacking_prediction": "N/A",
+            "stacking_score": "N/A",
+            "ensemble_score": "N/A",
+            "bert_score": "N/A",
+            "cb_score": "N/A",
+            "cb_benign_prob": "N/A",
+            "vt_score": "N/A",
+            "vt_detection_rate": "N/A",
+            "vt_malicious_count": "N/A",
+            "vt_suspicious_count": "N/A",
+            "vt_total_engines": "N/A",
+            "tranco_score": "N/A",
+            "in_tranco": "N/A",
+            "tranco_rank": "N/A",
+            "normalized_domain": "N/A",
+            "bert_error": "N/A",
+            "catboost_error": "N/A",
+            "vt_error": "N/A",
+            "tranco_error": "N/A",
+            "saved_at": saved_at,
+            "bert_architecture": bert_architecture,
+            "stacker_variant": STACKER_VARIANT,
+            "selected_meta_model_name": selected_meta_model_name,
+            "selected_meta_model_dir": selected_meta_model_dir,
+        }
+
+        df_placeholder = pd.DataFrame([placeholder_row])
+        try:
+            df_existing = pd.read_csv(OUTPUT_ALL_ERRORS)
+            df_placeholder = pd.concat([df_existing, df_placeholder], ignore_index=True)
+        except FileNotFoundError:
+            pass
+
+        df_placeholder.to_csv(OUTPUT_ALL_ERRORS, index=False)
+        print(f"Saved no-error run record to: {OUTPUT_ALL_ERRORS}")
+        return
+    
     df_fp = df_errors[df_errors["error_type"] == "False Positive"].copy()
     df_fn = df_errors[df_errors["error_type"] == "False Negative"].copy()
 
-    df_errors.to_csv(OUTPUT_ALL_ERRORS, index=False)
-    df_fp.to_csv(OUTPUT_FP, index=False)
-    df_fn.to_csv(OUTPUT_FN, index=False)
+    for output_path, df_new in [
+        (OUTPUT_ALL_ERRORS, df_errors),
+        (OUTPUT_FP, df_fp),
+        (OUTPUT_FN, df_fn),
+    ]:
+        try:
+            df_existing = pd.read_csv(output_path)
+            df_new = pd.concat([df_existing, df_new], ignore_index=True)
+        except FileNotFoundError:
+            pass
+        df_new.to_csv(output_path, index=False)
 
     print(f"Saved all errors to: {OUTPUT_ALL_ERRORS}")
     print(f"Saved false positives to: {OUTPUT_FP}")

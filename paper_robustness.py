@@ -13,6 +13,7 @@ from graph.nodes.inference import ml_inference
 from graph.nodes.load_data import df_test, df_val
 from graph.nodes.stacking_inference import stacking_decision
 from models.bert_model import get_active_bert_metadata
+from models.meta_model import get_meta_model_name
 
 # -----------------------------
 # Paper experiment configuration
@@ -21,12 +22,17 @@ OUTPUT_CSV = "data/results/paper_robustness.csv"
 TIMEZONE = "US/Eastern"
 
 DATASETS = {
-    "Validation": df_val,
+    #"Validation": df_val,
     "Test": df_test,
 }
 
 STACKER_VARIANT = "4signal"
-chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+#chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_dt")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_extrinsic_dt")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_bert_tranco_dt")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_cb")
+chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_gb")
 
 ROBUSTNESS_SETTINGS = [
     "full",
@@ -35,7 +41,7 @@ ROBUSTNESS_SETTINGS = [
     "no_vt_no_tranco",
 ]
 
-MAX_URLS_PER_SPLIT = None
+MAX_URLS_PER_SPLIT = 150
 
 
 def map_prediction_to_label(prediction: str) -> int:
@@ -132,6 +138,10 @@ def run_split_robustness(df: pd.DataFrame, split_name: str, setting: str) -> dic
         "Split": split_name,
         "Robustness Setting": setting,
         "Stacker Variant": STACKER_VARIANT,
+        "Selected Meta Model Name": get_meta_model_name(
+            stacker_variant=STACKER_VARIANT,
+            model_dir=str(chosen_meta_model_dir),
+        ),
         "Selected Meta Model Dir": str(chosen_meta_model_dir),
         "Accuracy": metrics["Accuracy"],
         "Precision": metrics["Precision"],

@@ -23,7 +23,8 @@ from models.fusion_features import build_signal_features
 
 results_output = "data/results/results.csv"
 ml_models_dir = Path("data/ml_models")
-ablation_models_dir = ml_models_dir / "ablation"
+#ablation_models_dir = ml_models_dir / "ablation"
+ablation_models_dir = ml_models_dir / "chosen_meta_models"
 timezone = "US/Eastern"
 data_type = "new_data"  # can use old_data or new_data
 fusion_modes = ["average", "stacking_rich", "stacking_4signal"]

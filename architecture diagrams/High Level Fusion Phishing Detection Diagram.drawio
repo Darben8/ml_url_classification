@@ -1,0 +1,139 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="9AIB9X88I7mqrGqZ2f8E">
+    <mxGraphModel dx="1393" dy="764" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Kaggle Dataset 1 (822k)" vertex="1">
+          <mxGeometry height="60" width="115" x="305" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Ensemble Model (Catboost + BERT + VirusTotal +&amp;nbsp;&lt;div&gt;tranco)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="305" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Base model training (CatBoost, Bert, CNN, etc)" vertex="1">
+          <mxGeometry height="60" width="115" x="305" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="URL Feature Extraction (Lexical, heuristic)" vertex="1">
+          <mxGeometry height="60" width="115" x="305" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Signal Extraction" vertex="1">
+          <mxGeometry height="50" width="115" x="305" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Learned meta-model fusion" vertex="1">
+          <mxGeometry height="60" width="120" x="305" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Evaluation (Kaggle Dataset 2)" vertex="1">
+          <mxGeometry height="50" width="120" x="305" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Ablation and Meta-Model Comparison" vertex="1">
+          <mxGeometry height="60" width="120" x="305" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="BERT Score" vertex="1">
+          <mxGeometry height="40" width="100" x="110" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="End-to-End Inference with Ensemble" vertex="1">
+          <mxGeometry height="60" width="120" x="305" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="CatBoost Score" vertex="1">
+          <mxGeometry height="40" width="100" x="280" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-16" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="VirusTotal Score" vertex="1">
+          <mxGeometry height="40" width="100" x="430" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-18" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Tranco&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp;Score&lt;/span&gt;" vertex="1">
+          <mxGeometry height="40" width="100" x="580" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-19" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-1" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-4" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="450" y="410" as="sourcePoint" />
+            <mxPoint x="500" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-20" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-4" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-3" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="360" y="220" as="sourcePoint" />
+            <mxPoint x="360" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-21" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-3" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="370" y="320" as="sourcePoint" />
+            <mxPoint x="363" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-22" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-2" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="360" y="420" as="sourcePoint" />
+            <mxPoint x="365" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-24" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-8" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-10" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="230" y="730" as="sourcePoint" />
+            <mxPoint x="230" y="770" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-25" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-10" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-9" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="240" y="820" as="sourcePoint" />
+            <mxPoint x="240" y="860" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-26" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-9" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-12" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="240" y="920" as="sourcePoint" />
+            <mxPoint x="240" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-27" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-5" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-11" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="230" y="510" as="sourcePoint" />
+            <mxPoint x="230" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-28" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-5" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-16" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="550" y="520" as="sourcePoint" />
+            <mxPoint x="550" y="560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-29" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-5" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-18" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="670" y="480" as="sourcePoint" />
+            <mxPoint x="670" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-30" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-5" style="endArrow=classic;html=1;rounded=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="Ruzzbf3-XckkJTSfGJP3-15" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="334" y="490" as="sourcePoint" />
+            <mxPoint x="350" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-32" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-11" style="endArrow=classic;html=1;rounded=0;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-8" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="250" y="750" as="sourcePoint" />
+            <mxPoint x="300" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-33" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-15" style="endArrow=classic;html=1;rounded=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-8" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="320" y="620" as="sourcePoint" />
+            <mxPoint x="440" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-36" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-16" style="endArrow=classic;html=1;rounded=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="Ruzzbf3-XckkJTSfGJP3-8" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="450" y="610" as="sourcePoint" />
+            <mxPoint x="400" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ruzzbf3-XckkJTSfGJP3-37" edge="1" parent="1" source="Ruzzbf3-XckkJTSfGJP3-18" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="Ruzzbf3-XckkJTSfGJP3-8" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="510" y="650" as="sourcePoint" />
+            <mxPoint x="540" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

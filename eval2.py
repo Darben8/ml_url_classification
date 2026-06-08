@@ -32,8 +32,30 @@ fusion_mode = "stacking_selected"  # can use average, stacking_rich, stacking_4s
 selected_stacker_variant = "4signal"  # feature family for stacking_selected: rich or 4signal
 #selected_meta_model_dir = Path("data/ml_models/chosen_meta_models")
 # decision tree and gradient boosting models performed best in meta model ablation
+
+# testing with dt
+
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_dt")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_cb_tranco_dt")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_bert_tranco_dt")
 selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_extrinsic_dt")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_intrinsic_and_tranco_dt")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_intrinsic_and_vt_dt")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_cb_vt_dt")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_bert_vt_dt")
 #selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_richops_cb_vt_gb")
+
+#testing with cb
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_cb_tranco_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_bert_tranco_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_extrinsic_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_intrinsic_and_tranco_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_intrinsic_and_vt_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_cb_vt_cb")
+selected_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_bert_vt_cb")
+
+
 
 os.makedirs(fig_dir, exist_ok=True)
 

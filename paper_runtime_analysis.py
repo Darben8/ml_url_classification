@@ -14,7 +14,7 @@ from graph.nodes.load_data import df_test, df_val
 from graph.nodes.stacking_inference import stacking_decision
 from graph.nodes.catboost_inference import catboost_inference
 from models.bert_model import get_active_bert_metadata, load_bert_model
-from models.meta_model import load_meta_feature_columns, load_meta_model
+from models.meta_model import get_meta_model_name, load_meta_feature_columns, load_meta_model
 from models.preprocessing import url_to_tensor
 from services.virustotal import vt_check_url
 from services.vtcache import get_cached_vt, save_vt_cache, vt_db_path
@@ -28,16 +28,19 @@ OUTPUT_CSV = "data/results/paper_runtime_analysis.csv"
 TIMEZONE = "US/Eastern"
 
 DATASETS = {
-    "Validation": df_val,
+    #"Validation": df_val,
     "Test": df_test,
 }
 
 STACKER_VARIANT = "4signal"
-chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+# chosen_meta_model_dir = Path("data/ml_models/chosen_meta_models")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_dt")
+# chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_cb")
+chosen_meta_model_dir = Path("data/ml_models/ablation/meta_model_4sig_all_signals_gb")
 
 VT_MODES = ["cached", "uncached"]
-ALLOW_UNCACHED_VT = False
-MAX_URLS_PER_SPLIT = None
+ALLOW_UNCACHED_VT = True
+MAX_URLS_PER_SPLIT = 150
 
 
 def _apply_split_limit(df: pd.DataFrame) -> pd.DataFrame:
@@ -244,6 +247,10 @@ def summarize_component_rows(rows: list[dict], split_name: str, vt_mode: str) ->
         "Split": split_name,
         "VT Mode": vt_mode,
         "Stacker Variant": STACKER_VARIANT,
+        "Selected Meta Model Name": get_meta_model_name(
+            stacker_variant=STACKER_VARIANT,
+            model_dir=str(chosen_meta_model_dir),
+        ),
         "Selected Meta Model Dir": str(chosen_meta_model_dir),
         "Num Samples": len(df),
         "normalization_time_s": round(df["normalization_time_s"].sum(), 6),
@@ -285,6 +292,10 @@ def run_decision_only_analysis(df: pd.DataFrame, split_name: str) -> dict:
         "Split": split_name,
         "VT Mode": "precomputed_states",
         "Stacker Variant": STACKER_VARIANT,
+        "Selected Meta Model Name": get_meta_model_name(
+            stacker_variant=STACKER_VARIANT,
+            model_dir=str(chosen_meta_model_dir),
+        ),
         "Selected Meta Model Dir": str(chosen_meta_model_dir),
         "Num Samples": len(states),
         **summary,
