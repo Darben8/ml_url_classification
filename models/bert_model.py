@@ -5,6 +5,7 @@ import torch
 from models.bert_architecture import  CharBERTClassifier
 from models.tokenizer import load_char_to_idx
 
+#ACTIVE_BERT_DIR = Path("data/bert_model")
 ACTIVE_BERT_DIR = Path("data/bert_model/bert_cv3_f3")
 #ACTIVE_BERT_DIR = Path("data/bert_model/bert_crossval_best")
 ACTIVE_BERT_CHECKPOINT = ACTIVE_BERT_DIR / "bert_checkpoint.pt"

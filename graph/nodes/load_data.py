@@ -52,8 +52,8 @@ df_new_urls = pd.read_csv("data/phishing_url_dataset_unique.csv")
 df_new_url = normalize_labels(df_new_urls, label_col="label",phishing_value=1)
 
 # #for evaluation of ablation models (72 urls in df_test)
-# phish_frac  = 0.0039   # sample less phishing
-# benign_frac = 0.0059  # sample more benign
+# phish_frac  = 0.39   # sample less phishing
+# benign_frac = 0.59  # sample more benign
 
 #for larger runtime analysis (0.039 = 720 urls in df_test, 0.39 = 7200 urls in df_test)
 phish_frac  = 0.039   # sample less phishing

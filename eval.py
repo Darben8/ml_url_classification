@@ -12,7 +12,11 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from graph.nodes.inference import ml_inference
 from graph.nodes.ensemble2 import ensemble_decision, weighted_ensemble_decision
 from graph.nodes.load_data import df_dev, df_val, df_test
+from models import bert_architecture
 #from graph.nodes.load_data import df_dev_old, df_val_old, df_test_old
+
+# checking ensemble with very first bert model
+# metrics_output = "data/results/eval_results_new_data.csv" #cvf = cross validation fold, this is the best fold from catboost & bertcross validation
 
 #correct/ most recent test of evaluation of entire ensemble
 metrics_output = "data/results/eval_results_new_data_cv3f3.csv" #cvf = cross validation fold, this is the best fold from catboost & bertcross validation
@@ -134,6 +138,7 @@ def save_metrics(metrics: dict):
     timestamp = datetime.now(ZoneInfo(timezone)).strftime("%Y-%m-%d %H:%M:%S")
     metrics["saved_at"] = timestamp
     metrics["ensemble_type"] = "weighted" if use_weighted else "standard"
+    metrics["bert_architecture"] = bert_architecture
 
     df_out = pd.DataFrame([metrics])
 
@@ -150,7 +155,7 @@ def save_metrics(metrics: dict):
 # ---------------- MAIN ----------------
 if __name__ == "__main__":
 
-    print("\n--- VALIDATION SET EVALUATION ON OLD TRAINING DATA ---")
+    print("\n--- VALIDATION SET EVALUATION ON NEW TRAINING DATA ---")
     #val_metrics, val_scores, val_labels = run_split_evaluation(df_val_old, "Validation")
     val_metrics, val_scores, val_labels = run_split_evaluation(df_val, "Validation")
     print(val_metrics)
@@ -169,7 +174,7 @@ if __name__ == "__main__":
     "old data validation",
     )
 
-    print("\n--- TEST SET EVALUATION ON OLD TRAINING DATA ---")
+    print("\n--- TEST SET EVALUATION ON NEW TRAINING DATA ---")
     test_metrics, test_scores, test_labels = run_split_evaluation(df_test, "Test")
     #test_metrics, test_scores, test_labels = run_split_evaluation(df_test_old, "Test")
     print(test_metrics)
