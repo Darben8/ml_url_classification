@@ -17,5 +17,6 @@ run_inference
 data/ml_models/meta models/
 data/ml_models/ablation/
 .data.Paper evaluations
+data/figures/
 
 #agentic_url_classifier.drawio
