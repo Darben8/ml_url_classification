@@ -1,41 +1,96 @@
-## Project overview
-This repository implements a URL phishing classifier that has evolved from an earlier "agentic/LangGraph" idea into a practical multi-signal phishing detection pipeline.
+## Project Overview
 
-For each URL, the system gathers four main signals:
+This repository implements a multi-signal phishing URL classification pipeline. The current system is not an agentic workflow or orchestration framework. It is a sequential inference pipeline that gathers several signals for each URL and combines them through either fixed-score fusion or learned meta-model fusion.
 
-Char-level BERT score
+The pipeline currently uses four primary signals:
 
-A custom character-level BERT classifier converts the URL string into character IDs, runs inference, and outputs a benign probability.
+- `bert_score`: a character-level BERT model score
+- `cb_score` / `cb_benign_prob`: a CatBoost lexical-feature model score
+- `vt_score` or VirusTotal-derived reputation features
+- `tranco_score` and rank-derived popularity features
 
-CatBoost score
+These signals support multiple fusion paths:
 
-A CatBoost model extracts handcrafted lexical URL features such as length, dots, digits, suspicious keywords, TLD indicators, entropy, and subdomain properties, then outputs phishing/benign probabilities.
+- standard average fusion
+- weighted average fusion
+- rich-feature stacking
+- compact 4-signal stacking
+- selected saved meta-model evaluation for model comparison and ablation experiments
 
-VirusTotal reputation score
+## Current Architecture
 
-The URL is looked up via the VirusTotal API. The code derives a detection rate from malicious/suspicious verdict counts, then converts that into a benign-style score via `1 - vt_detection_rate`. Results are cached locally in SQLite.
+At runtime, the pipeline is centered on `ml_inference()` in [graph/nodes/inference.py](/abs/c:/Users/Manubea/Documents/Career/Grad%20School/GRA/Research%20Project/ml_url_classification/graph/nodes/inference.py:17).
 
-Tranco popularity score
+For each input URL, the pipeline:
 
-The registered domain is extracted from the URL and looked up in a local Tranco top-1M CSV. The rank is normalized into a 0-1 trust-like score, where highly ranked domains score closer to 1.
+1. normalizes the registered domain
+2. looks up Tranco popularity
+3. looks up VirusTotal reputation
+4. runs character-level BERT inference
+5. runs CatBoost inference
+6. records signal-specific error flags and neutral fallbacks
+7. computes average and weighted ensemble outputs
+8. optionally computes stacking outputs with a saved meta model
 
-These signals are currently used in two fusion styles:
+The implementation is function-based and artifact-driven. The `graph/` package name is historical, but the behavior is a deterministic signal-generation and fusion pipeline rather than a graph-routed autonomous system.
 
-Standard average fusion
+## Signal Definitions
 
-A simple arithmetic mean across the four benign-style scores.
+### Character-Level BERT
 
-Stacking fusion
+The BERT path converts a URL string into character IDs, feeds them into the saved BERT checkpoint, and returns a benign-style probability:
 
-A calibrated logistic regression meta-model learns how to combine signal-level features derived from BERT, CatBoost, VirusTotal, and Tranco.
+- higher `bert_score` means more benign
+- lower `bert_score` means more phishing-like
 
-## Label and score convention
-This project uses the following internal convention throughout inference, evaluation, and stacker training:
+Artifacts are stored under `data/bert_model/`, including alternative saved checkpoints such as cross-validation outputs.
+
+### CatBoost Lexical Model
+
+The CatBoost path extracts handcrafted lexical URL features such as:
+
+- URL length
+- number of dots
+- digit usage
+- suspicious keywords
+- TLD indicators
+- entropy and subdomain properties
+
+It returns phishing and benign probabilities, with `cb_score` / `cb_benign_prob` used as the benign-style feature for fusion.
+
+### VirusTotal Reputation
+
+The VirusTotal path queries the URL reputation service and derives:
+
+- `vt_detection_rate`
+- `vt_malicious_count`
+- `vt_suspicious_count`
+- `vt_total_engines`
+
+For simple fusion, the code converts detection rate into a benign-style score:
+
+- `vt_score = 1 - vt_detection_rate`
+
+VirusTotal responses are cached locally in SQLite to reduce repeated API calls.
+
+### Tranco Popularity
+
+The Tranco path extracts the registered domain and looks it up in a local top-1M ranking. It derives:
+
+- `in_tranco`
+- `tranco_rank`
+- `tranco_score`
+
+Higher-ranked and known-popular domains receive more benign-like scores.
+
+## Label Convention
+
+The repository uses the following internal label convention across inference, training, and evaluation:
 
 - `Benign = 1`
 - `Phishing = 0`
 
-For score-like outputs:
+For score-like fields:
 
 - values closer to `1` mean more benign / more trusted
 - values closer to `0` mean more phishing-like / less trusted
@@ -43,56 +98,66 @@ For score-like outputs:
 This applies to:
 
 - `bert_score`
-- `cb_benign_prob` / `cb_score`
+- `cb_score`
+- `cb_benign_prob`
 - `vt_score`
 - `tranco_score`
 - `ensemble_score`
+- `weighted_score`
 - `stacking_score`
 
-## Inference flow
-At runtime, `ml_inference()` acts as the core signal-generation pipeline:
+## Fusion Modes
 
-take a URL from input state,
+### Standard Average Fusion
 
-normalize it to a registered domain,
+Average fusion uses the arithmetic mean of:
 
-query Tranco,
+- `tranco_score`
+- `vt_score`
+- `bert_score`
+- `cb_score`
 
-query VirusTotal,
+It writes:
 
-run BERT inference,
+- `ensemble_score`
+- `std_prediction`
 
-run CatBoost inference,
+### Weighted Average Fusion
 
-compute standard ensemble decision,
+Weighted fusion uses manually assigned weights in [graph/nodes/ensemble2.py](/abs/c:/Users/Manubea/Documents/Career/Grad%20School/GRA/Research%20Project/ml_url_classification/graph/nodes/ensemble2.py:1):
 
-compute weighted ensemble decision,
+- Tranco: `0.15`
+- VirusTotal: `0.35`
+- BERT: `0.25`
+- CatBoost: `0.25`
 
-return all intermediate signals, error flags, and final predictions in a state dictionary.
+It writes:
 
-The stacker path builds on top of this signal-generation step. It uses the signal outputs from `ml_inference()` as input features for a calibrated logistic regression model rather than relying only on fixed-score averaging.
+- `weighted_score`
+- `weighted_prediction`
 
-## Data and evaluation
-The repo includes:
+Unlike the standard ensemble, the weighted path can return `Uncertain`.
 
-labeled URL datasets,
+### Stacking Fusion
 
-trained BERT and CatBoost artifacts,
+The stacking path treats model outputs and reputation-derived values as features rather than fixed votes. The inference entry point is [graph/nodes/stacking_inference.py](/abs/c:/Users/Manubea/Documents/Career/Grad%20School/GRA/Research%20Project/ml_url_classification/graph/nodes/stacking_inference.py:1).
 
-evaluation outputs and figures,
+It supports two feature families:
 
-`eval.py`, which preserves the older evaluation workflow,
+- `rich`: a larger feature set including signal details and error flags
+- `4signal`: a compact feature set using only the core four benign-style signals
 
-`eval2.py`, which supports configurable evaluation over multiple data types and fusion modes,
+The prediction API returns:
 
-`train_stacker.py`, which builds signal-level training features and trains the calibrated logistic regression stacker.
+- `stacking_phishing_prob`
+- `stacking_score`
+- `stacking_prediction`
 
-Evaluation outputs include metrics such as accuracy, precision, recall, F1, ROC-AUC, and inference time, along with score-distribution and ROC-curve figures.
+## Stacking Feature Families
 
-## New stacking pipeline
-The repository now includes a learned-fusion path in addition to the standard averaging baseline.
+### Rich Feature Set
 
-The stacking pipeline works by treating model and reputation outputs as features rather than votes. The current stacker feature set is:
+The rich stacker uses signal-level and operational features assembled in `models/fusion_features.py`. The current rich feature family includes:
 
 - `bert_score`
 - `cb_benign_prob`
@@ -108,160 +173,284 @@ The stacking pipeline works by treating model and reputation outputs as features
 - `vt_error`
 - `tranco_error`
 
-These features are assembled in `models/fusion_features.py`, passed through a calibrated logistic regression model, and returned as:
+The default rich runtime directory in [models/meta_model.py](/abs/c:/Users/Manubea/Documents/Career/Grad%20School/GRA/Research%20Project/ml_url_classification/models/meta_model.py:5) is:
 
-- `stacking_score`
-- `stacking_prediction`
+- `data/ml_models/meta_model_v2`
 
-The current stacker is calibrated with sigmoid calibration and is designed to operate alongside the average ensemble rather than replacing it outright.
+### Compact 4-Signal Feature Set
 
-## Average Fusion Vs Stacking Fusion
-Average fusion uses a fixed rule:
+The compact stacker uses:
 
-- compute the benign-style scores from BERT, CatBoost, VirusTotal, and Tranco
-- take the arithmetic mean
-- classify using a fixed threshold
+- `bert_score`
+- `cb_score`
+- `vt_score`
+- `tranco_score`
 
-Stacking fusion uses a learned rule:
+This path is useful for simpler, faster learned fusion and for ablation-style comparisons that focus on the four highest-level signals.
 
-- compute the same underlying signals
-- flatten selected signal-level features into a feature vector
-- feed the vector into a calibrated logistic regression model
-- classify using the model's learned probability output
+The default 4-signal runtime directory in [models/meta_model.py](/abs/c:/Users/Manubea/Documents/Career/Grad%20School/GRA/Research%20Project/ml_url_classification/models/meta_model.py:5) is:
 
-In short, average fusion is hand-defined and static, while stacking fusion is data-driven and trainable.
+- `data/ml_models/meta_model_4signal_v1`
 
-## eval2.py
-`eval2.py` is the main configurable evaluation script for the current workflow.
+## Data Sources and Splits
 
-It supports two data types:
+The repository currently uses two labeled datasets with different roles.
 
-- `new_data`
-- `old_data`
+### Newer Dataset
 
-These map to the following split sets from `graph/nodes/load_data.py`:
+- `data/phishing_url_dataset_unique.csv`
 
-- `new_data`: `df_dev`, `df_val`, `df_test`
-- `old_data`: `df_dev_old`, `df_val_old`, `df_test_old`
+This is the newer dataset used for sampling, splitting, stacker feature generation, and most current evaluation workflows.
 
-It also supports two fusion modes:
+From [graph/nodes/load_data.py](/abs/c:/Users/Manubea/Documents/Career/Grad%20School/GRA/Research%20Project/ml_url_classification/graph/nodes/load_data.py:1), it is sampled into `url_sample` and then split into:
 
-- `average`
-- `stacking`
+- `df_dev`
+- `df_val`
+- `df_test`
 
-Behavior:
+### Older Dataset
 
-- `fusion_mode = "average"` evaluates the standard ensemble using `ensemble_score` and `std_prediction`
-- `fusion_mode = "stacking"` evaluates the calibrated meta-model using `stacking_score` and `stacking_prediction`
+- `data/new_data_urls.csv`
 
-`eval2.py` writes consolidated metrics to:
+This older labeled dataset is still preserved for comparison workflows and separate evaluation splits:
+
+- `df_dev_old`
+- `df_val_old`
+- `df_test_old`
+
+### Intended Roles
+
+Current intended usage is:
+
+- `df_dev` from the newer dataset for stacker feature generation and stacker training
+- `df_val` and `df_test` for evaluating current fusion behavior
+- old-data splits for historical comparison
+
+## Main Scripts
+
+### `eval.py`
+
+Legacy evaluation script for the earlier workflow. It still runs the current signal-generation pipeline but preserves the older evaluation style.
+
+### `eval2.py`
+
+Main configurable evaluation script for current fusion experiments.
+
+It supports:
+
+- `data_type = "new_data"` or `data_type = "old_data"`
+- `fusion_mode = "average"`
+- `fusion_mode = "stacking_rich"`
+- `fusion_mode = "stacking_4signal"`
+- `fusion_mode = "stacking_selected"`
+
+For `stacking_selected`, the script can evaluate a specific saved meta-model directory and explicitly choose the feature family to match that artifact.
+
+It writes consolidated metrics to:
 
 - `data/results/results.csv`
 
-The output CSV includes:
+It also generates score-distribution and ROC figures with filenames keyed by dataset, fusion mode, and BERT architecture.
 
-- the original metric columns used by the earlier evaluation workflow
-- `data_type`
-- `bert_architecture`
-- `fusion_mode`
+### `train_stacker.py`
 
-Figure filenames and titles are also generated dynamically from the active data type, fusion mode, and BERT architecture.
+Trains the calibrated logistic-regression rich stacker used in the main learned-fusion path.
 
-## train_stacker.py
-`train_stacker.py` trains the calibrated logistic regression meta-model used by the stacking pipeline.
+Current behavior:
 
-Current training source:
+- builds rich feature rows from `df_dev`
+- saves feature rows to `data/results/stacker_training_features.csv`
+- runs stratified cross-validation
+- fits the final calibrated classifier
+- saves artifacts to `data/ml_models/meta_model_v2`
 
-- `data/phishing_url_dataset_unique.csv -> url_sample -> df_dev`
+Saved artifacts include:
 
-The script:
+- `logistic_regression_calibrated.pkl`
+- `signal_feature_columns.pkl`
+- `meta_model_metadata.json`
 
-- loads the current dev split used for stacker training
-- runs `ml_inference()` for each URL
-- builds signal-level fusion features
-- evaluates stacker performance with stratified cross-validation
-- fits the final calibrated logistic regression model
-- saves artifacts for later inference
+### `model_training/train_meta_models.py`
 
-Primary outputs:
+Trains multiple alternative meta-model families over a selected feature set. This script expands the project beyond the original calibrated logistic-regression stacker.
 
+Supported feature-set families:
+
+- `rich_signal`
+- `4signal`
+
+Supported model families include:
+
+- Logistic Regression
+- Naive Bayes
+- Decision Tree
+- Random Forest
+- Gradient Boosting
+- K Nearest Neighbors
+- CatBoost
+- Support Vector Machine
+- Multi-layer Perceptron
+- XGBoost, when installed
+- LightGBM, when installed
+
+This script writes model artifacts under `data/ml_models/` with names such as:
+
+- `meta_model_4signal_gb_v1`
+- `meta_model_rich_dt_v1`
+- `meta_model_rich_lgbm_v1`
+
+### `eval_meta_models.py`
+
+Evaluates saved meta models against validation and test splits and appends comparison rows to `data/results/results.csv`.
+
+It can evaluate:
+
+- standard saved model directories
+- chosen saved model directories
+- both sources together
+
+It automatically discovers compatible models, infers whether they are `stacking_rich` or `stacking_4signal`, and records both evaluation metrics and training metadata.
+
+### `train_stacker_ablation.py`
+
+Trains ablation-oriented meta models from selected subsets of the saved feature CSVs.
+
+Supported ablation groups:
+
+- `4sig`
+- `rich`
+- `richops`
+
+The current ablation subsets include:
+
+- `intrinsic_only`
+- `intrinsic_and_vt`
+- `intrinsic_and_tranco`
+- `extrinsic`
+- `all_signals`
+- `bert_vt`
+- `bert_tranco`
+- `cb_vt`
+- `cb_tranco`
+
+Supported ablation model families include:
+
+- Logistic Regression
+- Support Vector Machine
+- Multi-layer Perceptron
+- Decision Tree
+- Gradient Boosting
+- CatBoost
+- XGBoost
+
+Artifacts are written under:
+
+- `data/ml_models/ablation/`
+
+This script also appends training summaries to:
+
+- `data/results/all_model_train_results.csv`
+
+## Meta-Model Selection State
+
+The repository now contains multiple saved meta-model candidates rather than a single learned-fusion artifact.
+
+Important pieces of the current selection workflow:
+
+- `data/ml_models/active_meta_model.json` stores a selected-model record and selection rationale
+- `eval_meta_models.py` compares saved candidates on evaluation splits
+- `eval2.py` can directly point at a chosen saved model directory with `fusion_mode = "stacking_selected"`
+
+The current `active_meta_model.json` records:
+
+- selected meta-model id: `meta_model_4signal_gb_v1`
+- feature set: `4signal`
+- model family: `Gradient Boosting`
+- selection basis: best accuracy / inference-time tradeoff from `data/results/results.csv`
+- selection date: `2026-06-03`
+
+Important note: the default runtime loader in `models/meta_model.py` still uses the hard-coded default directories for `rich` and `4signal` unless an explicit `model_dir` override is provided. In other words, the active-selection manifest documents a chosen model, but runtime behavior depends on which script and model directory are actually used.
+
+## Evaluation Outputs
+
+The repository contains multiple result artifacts, including:
+
+- `data/results/results.csv`
+- `data/results/all_model_train_results.csv`
 - `data/results/stacker_training_features.csv`
-- `data/ml_models/meta_model/logistic_regression_calibrated.pkl`
-- `data/ml_models/meta_model/signal_feature_columns.pkl`
-- `data/ml_models/meta_model/meta_model_metadata.json`
+- `data/results/stacker_training_features_4signal.csv`
+- `data/results/paper_ablation_test.csv`
+- `data/results/paper_ablation_test2.csv`
+- `data/results/paper_ablation_smoketest.csv`
+- `data/results/paper_runtime_analysis.csv`
+- `data/results/paper_robustness.csv`
+- `data/results/paper_error_analysis_false_positives.csv`
+- `data/results/paper_error_analysis_false_negatives.csv`
+- `data/results/paper_error_analysis_all.csv`
 
-The script now includes:
+These outputs support:
 
-- a `tqdm` progress bar during feature building
-- explicit phase logging for loading data, building features, running CV, fitting, and saving artifacts
+- baseline versus stacking comparisons
+- meta-model family comparison
+- feature-family comparison
+- ablation analysis
+- runtime analysis
+- robustness analysis
+- error analysis
 
-## Training and evaluation data roles
-The repository currently uses two labeled datasets with different roles.
+## Runtime and Paper-Oriented Analysis Scripts
 
-`data/new_data_urls.csv`
+The repository also includes:
 
-- represents an older labeled dataset used in prior base-model training work
-- should not be used directly as stacker training data for the current BERT/CatBoost models if those models were trained on it
+- `paper_runtime_analysis.py`
+- `paper_robustness.py`
+- `paper_error_analysis.py`
 
-`data/phishing_url_dataset_unique.csv`
+These scripts build on the same underlying `ml_inference()` and stacking workflow to support paper-style evaluation and reporting.
 
-- represents the newer labeled dataset used in current sampling, splitting, and evaluation logic
-- is sampled into `url_sample`
-- is then split into `df_dev`, `df_val`, and `df_test`
+## Required Artifacts and Prerequisites
 
-Current intended roles:
-
-- `df_dev` from `phishing_url_dataset_unique.csv` is used to train the stacker
-- `df_val` and `df_test` are used to evaluate current fusion behavior
-- `old_data` splits remain available for comparison against earlier data sources
-
-This keeps the stacker training workflow better separated from the earlier base-model training data.
-
-## Required artifacts and runtime prerequisites
 To run the current pipeline successfully, the following are required.
 
 Environment and secrets:
 
-- a Python environment with the packages from `requirements.txt`
-- a `.env` file containing `VIRUSTOTAL_API_KEY`
+- Python environment with packages from `requirements.txt`
+- `.env` file containing `VIRUSTOTAL_API_KEY`
 
 Required data files:
 
 - `data/tranco_top_1m.csv`
-- `data/vt_cache.db` (created/updated automatically for VT caching)
+- `data/vt_cache.db` or `data/vt_cache_old.db`
 - `data/phishing_url_dataset_unique.csv`
 - `data/new_data_urls.csv`
 
-Required model artifacts:
+Required base-model artifacts:
 
-- BERT checkpoint/config/character map under `data/bert_model/`
-- CatBoost model artifacts under `data/ml_models/`
+- BERT artifacts under `data/bert_model/`
+- CatBoost artifacts under `data/ml_models/`
 
-Required stacker artifacts for `fusion_mode = "stacking"`:
+Required learned-fusion artifacts depend on the path being evaluated:
 
-- `data/ml_models/meta_model/logistic_regression_calibrated.pkl`
-- `data/ml_models/meta_model/signal_feature_columns.pkl`
-- `data/ml_models/meta_model/meta_model_metadata.json`
+- standard rich stacker artifacts under `data/ml_models/meta_model_v2`
+- standard 4-signal stacker artifacts under `data/ml_models/meta_model_4signal_v1`
+- optional comparison and ablation artifacts under `data/ml_models/ablation/`, `data/ml_models/chosen_meta_models/`, and other `meta_model_*` directories
 
 Operational notes:
 
-- VirusTotal requests can dominate runtime if cache coverage is low because the code rate-limits uncached API calls
-- the stacker path depends on the saved meta-model artifacts being trained on the same feature schema expected by `models/fusion_features.py`
+- VirusTotal API calls dominate runtime when cache coverage is low
+- uncached VirusTotal requests are rate-limited
+- meta-model inference requires the feature schema in the artifact directory to match the feature builder used for that model
 
-## Current architectural reality
-Although the repo still contains some historical references to LangGraph and "agents," the implemented system is now a sequential signal-generation and fusion pipeline rather than a true agentic orchestration framework.
+## Current Project State
 
-The current architecture is best understood as:
+The project has evolved beyond a single average-fusion baseline and a single calibrated logistic-regression stacker. It now includes:
 
-- signal extraction with BERT, CatBoost, VirusTotal, and Tranco
-- fusion through either standard averaging or calibrated logistic-regression stacking
-- evaluation through configurable scripts that compare fusion modes across dataset splits
+- sequential multi-signal inference
+- average and weighted score fusion
+- rich and compact stacking feature families
+- multiple trained meta-model families
+- ablation-driven model training
+- selected-model evaluation workflows
+- paper-oriented runtime, robustness, and error-analysis scripts
 
-The core processing is function-based, artifact-driven, and model-centric. There is no visible graph routing policy, agent planner, or multi-step autonomous state machine in the current implementation.
-
-The project now includes:
-
-- traditional score aggregation for baseline comparison
-- a learned stacker for calibrated fusion
-- explicit error flags and neutral fallback handling for unavailable signals
-- consolidated evaluation outputs through `eval2.py`
+The current repository is best understood as a practical phishing-detection experimentation pipeline for comparing signal combinations and learned fusion strategies over multiple saved model families.
